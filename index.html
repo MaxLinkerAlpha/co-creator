@@ -20,6 +20,16 @@
         <div class="theme-dot eye" onclick="UI.setTheme('theme-eyecare')" title="护眼模式"></div>
         <div class="theme-dot roman" onclick="UI.setTheme('theme-roman')" title="罗马古典"></div>
     </div>
+    <!-- 模型选择器 -->
+    <div style="display:flex;align-items:center;gap:8px;margin-left:16px;">
+        <span style="font-size:13px;opacity:0.7;">🤖</span>
+        <select id="model-select" onchange="UI.switchModel(this.value)" style="min-width:200px;font-size:13px;">
+            <option value="Qwen3.5-4B">⚡ Qwen3.5-4B · 极致省钱</option>
+            <option value="Qwen3.5-9B" selected>⚖️ Qwen3.5-9B · 平衡之选</option>
+            <option value="Qwen3.5-35B-A3B">🎯 Qwen3.5-35B · 专业级</option>
+        </select>
+    </div>
+
     <button id="btn-preview" onclick="UI.toggleGlobalPreview()">👁️ 全局排版预览</button>
     <label style="display:flex;align-items:center;gap:5px;font-size:14px;cursor:pointer;">
         <input type="checkbox" id="auto-preview-toggle"> 🎭 沉浸式自动预览

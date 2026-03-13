@@ -107,7 +107,46 @@ const Store = {
 };
 
 // ==========================================
-// 3. API 层 (API) - 引入指数退避重试与 AbortController
+// 3. 模型管理器 (ModelManager)
+// ==========================================
+const ModelManager = {
+  currentModel: null,
+
+  init() {
+    // 优先使用本地存储的模型选择，其次是 CONFIG.MODEL_NAME
+    const saved = localStorage.getItem('pd_selected_model');
+    if (saved && AVAILABLE_MODELS && AVAILABLE_MODELS[saved]) {
+      this.currentModel = AVAILABLE_MODELS[saved];
+    } else if (CONFIG.MODEL_NAME) {
+      // 如果 CONFIG 中配置了模型，使用它
+      this.currentModel = { id: CONFIG.MODEL_NAME, name: CONFIG.MODEL_NAME };
+    } else {
+      // 默认使用 Qwen3.5-9B
+      this.currentModel = AVAILABLE_MODELS ? AVAILABLE_MODELS['Qwen3.5-9B'] : { id: 'Qwen/Qwen3.5-9B', name: 'Qwen3.5-9B' };
+    }
+  },
+
+  switch(modelKey) {
+    if (!AVAILABLE_MODELS || !AVAILABLE_MODELS[modelKey]) {
+      console.error('未知模型:', modelKey);
+      return false;
+    }
+    this.currentModel = AVAILABLE_MODELS[modelKey];
+    localStorage.setItem('pd_selected_model', modelKey);
+    console.log('[Model] 已切换到:', this.currentModel.name, '-', this.currentModel.useCase);
+    return true;
+  },
+
+  getCurrentModelId() {
+    return this.currentModel ? this.currentModel.id : (CONFIG.MODEL_NAME || 'Qwen/Qwen3.5-9B');
+  },
+
+  getCurrentModel() {
+    return this.currentModel;
+  }
+};
+
+// 4. API 层 (API) - 引入指数退避重试与 AbortController
 // ==========================================
 const API = {
   async call(text, systemPrompt, temp = 0.2, signal = null, retries = 2) {
@@ -119,7 +158,7 @@ const API = {
     }
 
     const payload = {
-      model: CONFIG.MODEL_NAME,
+      model: ModelManager.getCurrentModelId(),
       messages: [
         { role: 'system', content: cleanPrompt },
         { role: 'user', content: cleanText }
@@ -516,6 +555,16 @@ const UI = {
     this.currentPresets = { ...DEFAULT_PRESETS, ...Store.getCustomPresets() };
     this.setTheme(Store.getTheme());
 
+    // 初始化模型管理器
+    ModelManager.init();
+    const modelSelect = document.getElementById('model-select');
+    if (modelSelect) {
+      const savedModel = localStorage.getItem('pd_selected_model');
+      if (savedModel && AVAILABLE_MODELS && AVAILABLE_MODELS[savedModel]) {
+        modelSelect.value = savedModel;
+      }
+    }
+
     if (typeof CONFIG === 'undefined' || !CONFIG.API_KEY || CONFIG.API_KEY === 'sk-your-real-api-key-here') {
       alert('[Warning] 请先在 config.js 中配置 API_KEY！');
     }
@@ -586,6 +635,15 @@ const UI = {
     const pureThemeName = themeName.replace('theme-', '');
     document.documentElement.setAttribute('data-theme', pureThemeName);
     Store.set('pd_theme', themeName);
+  },
+
+  // 【新增】切换模型
+  switchModel(modelKey) {
+    if (ModelManager.switch(modelKey)) {
+      const model = ModelManager.getCurrentModel();
+      this.updateStatus('zh-status', `🤖 已切换: ${model.name}`);
+      setTimeout(() => this.updateStatus('zh-status', ''), 2000);
+    }
   },
 
   // 【修复】将助教主题类名挂载在 root，完美影响全部组件

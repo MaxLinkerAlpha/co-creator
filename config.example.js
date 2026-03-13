@@ -40,14 +40,14 @@ const CONFIG = {
     // 示例 (其他中转): https://your-proxy.com/v1/chat/completions
     API_URL: 'https://api.openai.com/v1/chat/completions',
     
-    // [必填] 模型名称
+    // [可选] 模型名称 - 如果未设置，用户可在界面上选择
     // 推荐选项:
     // - gpt-4o-mini: 性价比高，适合翻译
     // - gpt-4: 质量高，适合复杂内容
     // - gpt-4o: 最新多模态模型
     // - claude-3-haiku: 速度快
     // - claude-3.5-sonnet: 逻辑能力强
-    MODEL_NAME: 'gpt-4o-mini',
+    MODEL_NAME: '',
     
     // [可选] 温度参数 (0.0-1.0)
     // 越低越稳定（适合翻译），越高越有创意（适合写作/吐槽）
@@ -55,4 +55,26 @@ const CONFIG = {
     // 写作: 0.7
     // 助教吐槽: 0.8
     TEMPERATURE: 0.2
+};
+
+// 可选模型列表（用户可在界面切换）
+const AVAILABLE_MODELS = {
+    'Qwen3.5-4B': {
+        id: 'Qwen/Qwen3.5-4B',
+        name: 'Qwen3.5-4B',
+        desc: '⚡ 极致省钱提速',
+        useCase: '纯日常轻量翻译'
+    },
+    'Qwen3.5-9B': {
+        id: 'Qwen/Qwen3.5-9B',
+        name: 'Qwen3.5-9B',
+        desc: '⚖️ 平衡效果与速度',
+        useCase: '绝大多数拉丁语/多语种短文本场景'
+    },
+    'Qwen3.5-35B-A3B': {
+        id: 'Qwen/Qwen3.5-35B-A3B',
+        name: 'Qwen3.5-35B-A3B',
+        desc: '🎯 专业级翻译',
+        useCase: '专业级拉丁语翻译、批量多语种短文本处理'
+    }
 };
