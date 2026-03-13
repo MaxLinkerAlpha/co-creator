@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Co-creator - 实时多语言写作工作台</title>
+    <link rel="stylesheet" href="themes.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="config.js"></script>
+    <script src="data.js"></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+
+<!-- 工具栏 -->
+<div class="toolbar">
+    <div class="theme-dots">
+        <div class="theme-dot apple" onclick="UI.setTheme('theme-apple')" title="Apple极简"></div>
+        <div class="theme-dot dark" onclick="UI.setTheme('theme-dark')" title="暗黑模式"></div>
+        <div class="theme-dot eye" onclick="UI.setTheme('theme-eyecare')" title="护眼模式"></div>
+        <div class="theme-dot roman" onclick="UI.setTheme('theme-roman')" title="罗马古典"></div>
+    </div>
+    <button id="btn-preview" onclick="UI.toggleGlobalPreview()">👁️ 全局排版预览</button>
+    <label style="display:flex;align-items:center;gap:5px;font-size:14px;cursor:pointer;">
+        <input type="checkbox" id="auto-preview-toggle"> 🎭 沉浸式自动预览
+    </label>
+    <div style="flex:1"></div>
+    <span class="status-text" id="term-status" style="margin-right:10px;">📚 未加载术语库</span>
+    <label class="accent-btn" style="cursor:pointer;padding:6px 12px;border-radius:var(--radius);">
+        <input type="file" id="csv-upload" accept=".csv"> 📖 导入术语库
+    </label>
+    <button class="accent-btn" onclick="document.getElementById('preset-modal').style.display='flex'">➕ 新增风格预设</button>
+    <button class="accent-btn" onclick="UI.addTargetColumn()">➕ 添加并发目标栏</button>
+</div>
+
+<!-- 工作区 -->
+<div class="workspace" id="workspace">
+    <div class="column" id="source-col">
+        <div class="col-header">
+            <span>🇨🇳 源文本 (Source) <span class="status-text" id="zh-status"></span></span>
+        </div>
+        <textarea id="editor-zh" class="content-box" placeholder="📝 持续打字，离开光标的段落将自动在后台同步..."></textarea>
+        <div id="preview-zh" class="content-box preview-box" style="display:none;"></div>
+    </div>
+</div>
+
+<!-- 助教悬浮按钮 -->
+<div class="tutor-fab" onclick="UI.toggleTutorDrawer()" title="🏛️ 召唤语言助教">
+    <img src="assets/marcus_portrait.png" alt="Tutor" class="tutor-avatar" id="tutor-avatar-img">
+</div>
+
+<!-- 助教吐槽气泡 -->
+<div class="tutor-bubble" id="tutor-bubble" style="display:none;">
+    <div class="tutor-bubble-header">
+        <img src="assets/marcus_portrait.png" alt="" class="tutor-bubble-avatar" id="tutor-bubble-avatar">
+        <span class="tutor-bubble-name" id="tutor-bubble-name">Marcus</span>
+    </div>
+    <div class="tutor-bubble-content" id="tutor-bubble-content"></div>
+    <button class="tutor-bubble-close" onclick="UI.closeTutorBubble()">[x]</button>
+</div>
+
+<!-- 助教侧边抽屉 -->
+<div class="tutor-drawer" id="tutor-drawer">
+    <div class="tutor-header" id="tutor-header">
+        <span id="tutor-title">S.P.Q.R. - 助教中心</span>
+        <button onclick="UI.toggleTutorDrawer()" style="background:transparent;border:none;color:gold;font-size:20px;cursor:pointer;">[x]</button>
+    </div>
+    
+    <div class="tutor-selector">
+        <label>🎭 选择助教:</label>
+        <select id="tutor-select" onchange="TutorSystem.switch(this.value)">
+            <!-- 选项由 JavaScript 动态生成 -->
+        </select>
+    </div>
+    
+    <div class="tutor-showcase">
+        <img src="assets/marcus_portrait.png" alt="Tutor" class="tutor-showcase-img" id="tutor-showcase-img">
+        <div class="tutor-info" id="tutor-info">
+            <h3>Marcus</h3>
+            <p>15岁古罗马少年，毒舌助教，陪你写拉丁语。</p>
+        </div>
+    </div>
+    
+    <div class="tutor-content" id="tutor-chat">
+        <div style="opacity:0.8;font-style:italic;margin-bottom:20px;" id="tutor-intro">
+            "Salvē, amīce! 我是 Marcus。别指望我会像那些唯唯诺诺的希腊奴隶一样奉承你。"
+        </div>
+    </div>
+    
+    <div class="tutor-footer">
+        <div class="tutor-config">
+            <label>💬 吐槽模式:</label>
+            <select id="tutor-mode" onchange="TutorSystem.updateConfig(this.value)">
+                <option value="high">👀 [高频] 紧盯你写每一个字</option>
+                <option value="normal" selected>📝 [正常] 段落结束吐槽</option>
+                <option value="low">😤 [低频] 忍无可忍才说</option>
+                <option value="slow">🐢 [慢写] 吐槽你写得慢</option>
+                <option value="manual">🖱️ [手动] 只有点击才吐槽</option>
+            </select>
+        </div>
+        <button class="accent-btn tutor-roast-btn" onclick="TutorSystem.roastManual()" id="btn-roast">
+            🗡️ 吐槽我的文本！
+        </button>
+    </div>
+</div>
+
+<!-- 预设模态框 -->
+<div class="modal" id="preset-modal">
+    <div class="modal-content">
+        <h3 style="margin:0;">➕ 创建自定义风格预设</h3>
+        <div>
+            <label style="font-size:13px;font-weight:bold;">📝 预设名称</label>
+            <input type="text" id="new-preset-name" placeholder="例如：莎士比亚风">
+        </div>
+        <div>
+            <label style="font-size:13px;font-weight:bold;">⚙️ 核心系统提示词 (Prompt)</label>
+            <div style="font-size:12px;opacity:0.7;margin-bottom:5px;">请务必使用 <code>{{lang}}</code> 代表目标语言。</div>
+            <textarea id="new-preset-prompt" placeholder="You are an expert. Translate into {{lang}}..."></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;">
+            <button onclick="document.getElementById('preset-modal').style.display='none'">❌ 取消</button>
+            <button class="accent-btn" onclick="UI.saveNewPreset()">💾 保存预设</button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

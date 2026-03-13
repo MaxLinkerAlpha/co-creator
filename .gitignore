@@ -1,0 +1,24 @@
+# Co-creator 项目忽略文件
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.temp
+*.log
+
+# 备份文件
+*.bak
+*.backup
+
+# 敏感配置（如果不想提交个人 API 密钥）
+config.js
