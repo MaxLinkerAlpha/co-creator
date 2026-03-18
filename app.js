@@ -114,7 +114,7 @@ const ModelManager = {
   customModelId: null,  // 【新增】存储自定义模型ID
 
   init() {
-    // 优先使用本地存储的模型选择，其次是 CONFIG.MODEL_NAME
+    // 【修复】优先使用本地存储的模型选择
     const saved = localStorage.getItem('pd_selected_model');
     const savedCustomModel = localStorage.getItem('pd_custom_model_id');
     
@@ -122,14 +122,14 @@ const ModelManager = {
       this.customModelId = savedCustomModel;
     }
     
+    // 【修复】简化逻辑：只要有保存的模型且存在，就使用它
     if (saved && AVAILABLE_MODELS && AVAILABLE_MODELS[saved]) {
       this.currentModel = AVAILABLE_MODELS[saved];
     } else if (CONFIG.MODEL_NAME) {
-      // 如果 CONFIG 中配置了模型，使用它
       this.currentModel = { id: CONFIG.MODEL_NAME, name: CONFIG.MODEL_NAME };
     } else {
-      // 【修改】默认使用最快的 Qwen3.5-4B
-      this.currentModel = AVAILABLE_MODELS ? AVAILABLE_MODELS['Qwen3.5-4B'] : { id: 'Qwen/Qwen3.5-4B', name: 'Qwen3.5-4B' };
+      this.currentModel = AVAILABLE_MODELS['Qwen3.5-4B'];
+      localStorage.setItem('pd_selected_model', 'Qwen3.5-4B');
     }
   },
 
@@ -141,16 +141,6 @@ const ModelManager = {
     this.currentModel = AVAILABLE_MODELS[modelKey];
     localStorage.setItem('pd_selected_model', modelKey);
     
-    // 【新增】如果切换到自定义模型，从 localStorage 读取自定义ID
-    if (modelKey === 'Custom') {
-      const customId = localStorage.getItem('pd_custom_model_id');
-      if (customId) {
-        this.customModelId = customId;
-        console.log('[Model] 已切换到自定义模型:', customId);
-      }
-    }
-    
-    console.log('[Model] 已切换到:', this.currentModel.name, '-', this.currentModel.useCase);
     return true;
   },
   
@@ -159,7 +149,6 @@ const ModelManager = {
     if (!modelId || !modelId.trim()) return false;
     this.customModelId = modelId.trim();
     localStorage.setItem('pd_custom_model_id', this.customModelId);
-    console.log('[Model] 自定义模型ID已设置:', this.customModelId);
     return true;
   },
 
@@ -205,11 +194,8 @@ const API = {
       max_tokens: 2048  // 【优化】限制最大输出长度，加快响应
     };
 
-    console.log('[API] 准备请求:', {
-      url: CONFIG.API_URL,
-      model: payload.model,
-      textLength: cleanText.length
-    });
+    // API 请求调试信息（生产环境禁用）
+    // console.log('[API] 准备请求:', { model: payload.model });
 
     // 指数退避重试机制
     for (let i = 0; i <= retries; i++) {
@@ -219,7 +205,6 @@ const API = {
       
       // 外部 signal 中断处理
       const onExternalAbort = () => {
-        console.log('[API] 收到外部中断信号');
         if (timeoutId) clearTimeout(timeoutId);
         controller.abort();
       };
@@ -229,13 +214,9 @@ const API = {
       }
       
       // 30秒超时
-      timeoutId = setTimeout(() => {
-        console.log('[API] 请求超时，自动中断');
-        controller.abort();
-      }, 30000);
+      timeoutId = setTimeout(() => controller.abort(), 30000);
       
       try {
-        console.log(`[API] 发送请求 (尝试 ${i + 1}/${retries + 1})...`);
         const startTime = Date.now();
         
         const response = await fetch(CONFIG.API_URL, {
@@ -253,7 +234,7 @@ const API = {
           externalSignal.removeEventListener('abort', onExternalAbort);
         }
         
-        console.log(`[API] 响应收到: HTTP ${response.status}, 耗时 ${Date.now() - startTime}ms`);
+        // 请求成功
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -262,11 +243,10 @@ const API = {
         }
 
         const data = await response.json();
-        console.log('[API] 解析成功');
+
         
         // 【修复】安全检查 API 响应结构
         if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-          console.error('[API] 响应结构异常:', JSON.stringify(data).slice(0, 200));
           throw new Error('API 响应格式异常');
         }
         
@@ -290,13 +270,23 @@ const API = {
           // 超时时继续重试
         } else {
           // 其他错误
-          console.error(`[API] 请求失败 (尝试 ${i + 1}/${retries + 1}):`, err);
-          if (i === retries) throw err;
+          if (i === retries) {
+            // 统一错误信息
+            let errorMsg = '翻译失败';
+            if (err.message.includes('timeout') || err.message.includes('超时')) {
+              errorMsg = '请求超时，请检查网络或切换模型';
+            } else if (err.message.includes('403')) {
+              errorMsg = '模型不可用，请切换其他模型';
+            } else if (err.message.includes('401')) {
+              errorMsg = 'API密钥无效';
+            } else if (err.message.includes('429')) {
+              errorMsg = '请求过于频繁，请稍后再试';
+            }
+            throw new Error(errorMsg);
+          }
         }
         
-        const delay = 1000 * Math.pow(2, i);
-        console.warn(`[API] ${delay/1000}秒后进行第 ${i + 1} 次重试...`);
-        await new Promise(r => setTimeout(r, delay)); 
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); 
       }
     }
   }
@@ -316,7 +306,6 @@ const SyncEngine = {
   updateParagraphCount(text) {
     const count = text.split('\n\n').filter(p => p.trim()).length;
     const increased = count > this.sharedParagraphCount;
-    console.log(`[SyncEngine] updateParagraphCount: 当前段落数=${count}, 之前=${this.sharedParagraphCount}, 是否增加=${increased}`);
     if (increased) {
       this.sharedParagraphCount = count;
     }
@@ -374,7 +363,7 @@ const SyncEngine = {
     
     // 【修复】检查是否有目标列
     if (!targets || targets.length === 0) {
-      console.log('[SyncEngine] 没有目标列，跳过同步');
+      UI.updateStatus('zh-status', '➕ 请先添加目标语言栏');
       return;
     }
 
@@ -433,27 +422,17 @@ const SyncEngine = {
 
   // 【新增】专门处理段落完成时的同步 - 只翻译完成的那个区块
   async syncCompletedBlock(fullText, blockIndex) {
-    console.log(`[SyncEngine] syncCompletedBlock 被调用: blockIndex=${blockIndex}`);
-    
     const currentBlocks = fullText.split('\n\n');
     const totalBlocks = currentBlocks.length;
     const blockContent = currentBlocks[blockIndex]?.trim();
     
-    console.log(`[SyncEngine] 当前总段落数=${totalBlocks}, 完成段落内容="${blockContent?.slice(0, 50)}"`);
-    
-    if (!blockContent) {
-      console.log('[SyncEngine] 段落内容为空，跳过');
-      return;
-    }
+    if (!blockContent) return;
     
     const targets = UI.getTargetConfigs();
-    // 【修复】检查是否有目标列
     if (!targets || targets.length === 0) {
-      console.log('[SyncEngine] 没有目标列，跳过同步');
+      UI.updateStatus('zh-status', '➕ 请先添加目标语言栏');
       return;
     }
-    
-    console.log(`[SyncEngine] 开始翻译完成的段落 ${blockIndex + 1}/${totalBlocks}`);
     
     // 更新内存
     this.sourceBlocksMemory[blockIndex] = currentBlocks[blockIndex];
@@ -485,7 +464,6 @@ const SyncEngine = {
   async translateBlock(text, index, totalBlocks, targets, asHeading = false) {
     const presets = UI.currentPresets;
     const reqKeyPrefix = `block-${index}`;
-    console.log(`[SyncEngine] translateBlock: 段落 ${index + 1}, 目标列数 ${targets.length}`);
 
     // 【关键修复】使用 Promise.all 并行处理所有目标列
     const translationTasks = targets.map(async (target) => {
@@ -497,9 +475,7 @@ const SyncEngine = {
       // 安全地中断旧请求
       const oldController = this.activeRequests[reqKey];
       if (oldController) {
-        console.log(`[SyncEngine] 中断旧请求: ${reqKey}`);
         oldController.abort();
-        // 【关键修复】等待一小段时间确保旧请求完全清理
         await new Promise(r => setTimeout(r, 50));
       }
       
@@ -509,20 +485,16 @@ const SyncEngine = {
       UI.updateStatus(target.statusId, `🔄 翻译段落 ${index + 1}...`);
 
       try {
-        // 【修复】检查预设是否存在
+              // 【修复】检查预设是否存在
         const basePrompt = presets[target.style];
         if (!basePrompt) {
-          console.error(`[SyncEngine] 预设不存在: ${target.style}`);
           UI.updateStatus(target.statusId, '⚠️ 预设错误');
           return;
         }
         
         const prompt = this.buildPrompt(text, target.lang, basePrompt, target.latinConfig);
-        console.log(`[SyncEngine] 开始翻译: ${target.id}`);
         
         let result = await API.call(text, prompt, CONFIG.TEMPERATURE, newController.signal);
-        
-        console.log(`[SyncEngine] 翻译完成: ${target.id}, 结果长度 ${result.length}`);
         
         // 如果是标题，添加 # 前缀
         if (asHeading && !result.startsWith('#')) {
@@ -533,9 +505,9 @@ const SyncEngine = {
         UI.updateStatus(target.statusId, '✓');
       } catch (err) {
         if (err.name === 'AbortError') {
-          console.log(`[SyncEngine] 请求被中断(正常): ${target.id}`);
+          // 请求被用户中断，静默处理
         } else {
-          UI.updateStatus(target.statusId, '⚠️ 错误');
+          UI.updateStatus(target.statusId, '⚠️ ' + (err.message.includes('超时') ? '请求超时' : '翻译失败'));
           console.error(`[SyncEngine] 翻译错误 ${target.id}:`, err);
         }
       } finally {
@@ -547,7 +519,6 @@ const SyncEngine = {
     });
 
     await Promise.allSettled(translationTasks);
-    console.log(`[SyncEngine] translateBlock 完成: 段落 ${index + 1}`);
   }
 };
 
@@ -771,11 +742,6 @@ const UI = {
     elZh.addEventListener('input', (e) => {
       const text = elZh.value;
       const cursorIndex = text.substring(0, elZh.selectionStart).split('\n\n').length - 1;
-      const paragraphs = text.split('\n\n').filter(p => p.trim());
-      const currentParagraphCount = paragraphs.length;
-      const now = Date.now();
-      
-      console.log(`[UI] input事件: 文本长度=${text.length}, 段落数=${currentParagraphCount}, 光标所在段落=${cursorIndex}`);
       
       this.updateStatus('zh-status', '⌨️ 输入中...');
       
@@ -783,29 +749,23 @@ const UI = {
       clearTimeout(SyncEngine.typingTimer);
       
       // 【并行触发方式2】实时段落完成触发
-      // 使用 SyncEngine 共享计数器检测段落变化
       const isParagraphCompleted = SyncEngine.updateParagraphCount(text);
       
-      console.log(`[UI] 段落是否完成=${isParagraphCompleted}, sharedParagraphCount=${SyncEngine.sharedParagraphCount}`);
-      
       if (isParagraphCompleted) {
-        // 段落完成，立即触发翻译（不等待防抖）
-        const completedBlockIndex = SyncEngine.sharedParagraphCount - 2; // 刚完成的段落索引
-        console.log(`[UI] 检测到段落完成, completedBlockIndex=${completedBlockIndex}`);
+        // 【修复】计算刚完成的段落索引（当前段落数 - 1 是刚完成的）
+        const completedBlockIndex = SyncEngine.sharedParagraphCount - 2;
+        // 确保索引有效且段落有内容才翻译
         if (completedBlockIndex >= 0) {
-          this.updateStatus('zh-status', '[段落完成] 立即翻译...');
-          console.log(`[UI] 触发段落完成翻译: 段落 ${completedBlockIndex}`);
-          // 【修复】直接同步完成的段落，而不是调用 execute 遍历所有区块
-          SyncEngine.syncCompletedBlock(text, completedBlockIndex);
-          // 【关键修复】段落已完成翻译，不需要再触发防抖
-          return;
-        } else {
-          console.log(`[UI] completedBlockIndex < 0, 不触发翻译`);
+          const blocks = text.split('\n\n');
+          if (blocks[completedBlockIndex]?.trim()) {
+            this.updateStatus('zh-status', '🔄 段落翻译中...');
+            SyncEngine.syncCompletedBlock(text, completedBlockIndex);
+            return;
+          }
         }
       }
       
       // 只有段落未完成时才设置防抖定时器
-      console.log(`[UI] 设置防抖定时器, 1500ms后执行execute`);
       SyncEngine.typingTimer = setTimeout(() => SyncEngine.execute(text, cursorIndex, true), 1500);
       
       this._lastInputTime = now;
