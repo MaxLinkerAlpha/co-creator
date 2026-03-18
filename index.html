@@ -21,13 +21,18 @@
         <div class="theme-dot roman" onclick="UI.setTheme('theme-roman')" title="罗马古典"></div>
     </div>
     <!-- 模型选择器 -->
-    <div style="display:flex;align-items:center;gap:8px;margin-left:16px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-left:16px;flex-wrap:wrap;">
         <span style="font-size:13px;opacity:0.7;">🤖</span>
-        <select id="model-select" onchange="UI.switchModel(this.value)" style="min-width:200px;font-size:13px;">
-            <option value="Qwen3.5-4B">⚡ Qwen3.5-4B · 极致省钱</option>
-            <option value="Qwen3.5-9B" selected>⚖️ Qwen3.5-9B · 平衡之选</option>
+        <select id="model-select" onchange="UI.handleModelChange(this.value)" style="min-width:180px;font-size:13px;">
+            <option value="Qwen3.5-4B" selected>⚡ Qwen3.5-4B · 最快响应</option>
+            <option value="Qwen3.5-9B">⚖️ Qwen3.5-9B · 平衡之选</option>
             <option value="Qwen3.5-35B-A3B">🎯 Qwen3.5-35B · 专业级</option>
+            <option value="Qwen2.5-7B">🆓 Qwen2.5-7B · 免费稳定</option>
+            <option value="Custom">✏️ 自定义模型...</option>
         </select>
+        <input type="text" id="custom-model-input" placeholder="输入模型ID，如: gpt-4o" 
+               style="display:none;min-width:150px;font-size:13px;padding:4px 8px;border:1px solid var(--border-color);border-radius:var(--radius);"
+               onchange="UI.setCustomModel(this.value)">
     </div>
 
     <button id="btn-preview" onclick="UI.toggleGlobalPreview()">👁️ 全局排版预览</button>

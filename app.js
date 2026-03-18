@@ -111,18 +111,25 @@ const Store = {
 // ==========================================
 const ModelManager = {
   currentModel: null,
+  customModelId: null,  // 【新增】存储自定义模型ID
 
   init() {
     // 优先使用本地存储的模型选择，其次是 CONFIG.MODEL_NAME
     const saved = localStorage.getItem('pd_selected_model');
+    const savedCustomModel = localStorage.getItem('pd_custom_model_id');
+    
+    if (savedCustomModel) {
+      this.customModelId = savedCustomModel;
+    }
+    
     if (saved && AVAILABLE_MODELS && AVAILABLE_MODELS[saved]) {
       this.currentModel = AVAILABLE_MODELS[saved];
     } else if (CONFIG.MODEL_NAME) {
       // 如果 CONFIG 中配置了模型，使用它
       this.currentModel = { id: CONFIG.MODEL_NAME, name: CONFIG.MODEL_NAME };
     } else {
-      // 默认使用 Qwen3.5-9B
-      this.currentModel = AVAILABLE_MODELS ? AVAILABLE_MODELS['Qwen3.5-9B'] : { id: 'Qwen/Qwen3.5-9B', name: 'Qwen3.5-9B' };
+      // 【修改】默认使用最快的 Qwen3.5-4B
+      this.currentModel = AVAILABLE_MODELS ? AVAILABLE_MODELS['Qwen3.5-4B'] : { id: 'Qwen/Qwen3.5-4B', name: 'Qwen3.5-4B' };
     }
   },
 
@@ -133,16 +140,44 @@ const ModelManager = {
     }
     this.currentModel = AVAILABLE_MODELS[modelKey];
     localStorage.setItem('pd_selected_model', modelKey);
+    
+    // 【新增】如果切换到自定义模型，从 localStorage 读取自定义ID
+    if (modelKey === 'Custom') {
+      const customId = localStorage.getItem('pd_custom_model_id');
+      if (customId) {
+        this.customModelId = customId;
+        console.log('[Model] 已切换到自定义模型:', customId);
+      }
+    }
+    
     console.log('[Model] 已切换到:', this.currentModel.name, '-', this.currentModel.useCase);
+    return true;
+  },
+  
+  // 【新增】设置自定义模型ID
+  setCustomModelId(modelId) {
+    if (!modelId || !modelId.trim()) return false;
+    this.customModelId = modelId.trim();
+    localStorage.setItem('pd_custom_model_id', this.customModelId);
+    console.log('[Model] 自定义模型ID已设置:', this.customModelId);
     return true;
   },
 
   getCurrentModelId() {
+    // 【新增】如果是自定义模型，返回自定义ID
+    if (this.currentModel && this.currentModel.id === 'custom' && this.customModelId) {
+      return this.customModelId;
+    }
     return this.currentModel ? this.currentModel.id : (CONFIG.MODEL_NAME || 'Qwen/Qwen3.5-9B');
   },
 
   getCurrentModel() {
     return this.currentModel;
+  },
+  
+  // 【新增】检查当前是否为自定义模型
+  isCustomModel() {
+    return this.currentModel && this.currentModel.id === 'custom';
   }
 };
 
@@ -155,8 +190,8 @@ const API = {
     const cleanPrompt = Utils.cleanText(systemPrompt);
 
     // 【修复】更严格的 API_KEY 检查
-    const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key', ''];
-    if (!CONFIG.API_KEY || invalidKeys.some(k => CONFIG.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
+    const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key'];
+    if (!CONFIG.API_KEY || invalidKeys.some(k => k && CONFIG.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
       throw new Error('API_KEY not configured or invalid');
     }
 
@@ -166,7 +201,8 @@ const API = {
         { role: 'system', content: cleanPrompt },
         { role: 'user', content: cleanText }
       ],
-      temperature: temp
+      temperature: temp,
+      max_tokens: 2048  // 【优化】限制最大输出长度，加快响应
     };
 
     console.log('[API] 准备请求:', {
@@ -227,6 +263,13 @@ const API = {
 
         const data = await response.json();
         console.log('[API] 解析成功');
+        
+        // 【修复】安全检查 API 响应结构
+        if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+          console.error('[API] 响应结构异常:', JSON.stringify(data).slice(0, 200));
+          throw new Error('API 响应格式异常');
+        }
+        
         return data.choices[0].message.content.trim();
       } catch (err) {
         clearTimeout(timeoutId);
@@ -280,6 +323,12 @@ const SyncEngine = {
   },
 
   buildPrompt(text, targetLang, basePrompt, latinConfig) {
+    // 【修复】确保 basePrompt 是有效字符串
+    if (!basePrompt || typeof basePrompt !== 'string') {
+      console.error('[SyncEngine] buildPrompt: basePrompt 无效', basePrompt);
+      basePrompt = 'Translate into {{lang}}. Output ONLY the translation.';
+    }
+    
     let finalLang = targetLang;
     const rules = [];
 
@@ -450,7 +499,15 @@ const SyncEngine = {
       UI.updateStatus(target.statusId, `🔄 翻译段落 ${index + 1}...`);
 
       try {
-        const prompt = this.buildPrompt(text, target.lang, presets[target.style], target.latinConfig);
+        // 【修复】检查预设是否存在
+        const basePrompt = presets[target.style];
+        if (!basePrompt) {
+          console.error(`[SyncEngine] 预设不存在: ${target.style}`);
+          UI.updateStatus(target.statusId, '⚠️ 预设错误');
+          return;
+        }
+        
+        const prompt = this.buildPrompt(text, target.lang, basePrompt, target.latinConfig);
         console.log(`[SyncEngine] 开始翻译: ${target.id}`);
         
         let result = await API.call(text, prompt, CONFIG.TEMPERATURE, newController.signal);
@@ -650,16 +707,32 @@ const UI = {
     // 初始化模型管理器
     ModelManager.init();
     const modelSelect = document.getElementById('model-select');
+    const customInput = document.getElementById('custom-model-input');
+    
     if (modelSelect) {
       const savedModel = localStorage.getItem('pd_selected_model');
       if (savedModel && AVAILABLE_MODELS && AVAILABLE_MODELS[savedModel]) {
         modelSelect.value = savedModel;
+        // 【新增】如果是自定义模型，显示输入框
+        if (savedModel === 'Custom' && customInput) {
+          customInput.style.display = 'inline-block';
+          const savedCustom = localStorage.getItem('pd_custom_model_id');
+          if (savedCustom) customInput.value = savedCustom;
+        }
+      } else {
+        // 【修复】同步下拉框与 ModelManager 的实际默认模型
+        const currentModel = ModelManager.getCurrentModel();
+        if (currentModel) {
+          // 找到对应的 key
+          const modelKey = Object.keys(AVAILABLE_MODELS).find(k => AVAILABLE_MODELS[k].id === currentModel.id);
+          if (modelKey) modelSelect.value = modelKey;
+        }
       }
     }
 
     // 【修复】更严格的 API_KEY 检查
-    const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key', ''];
-    if (typeof CONFIG === 'undefined' || !CONFIG.API_KEY || invalidKeys.some(k => CONFIG.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
+    const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key'];
+    if (typeof CONFIG === 'undefined' || !CONFIG.API_KEY || invalidKeys.some(k => k && CONFIG.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
       alert('[Warning] 请先在 config.js 中配置有效的 API_KEY！');
     }
 
@@ -694,21 +767,27 @@ const UI = {
       
       this.updateStatus('zh-status', '⌨️ 输入中...');
       
-      // 【并行触发方式1】停止打字防抖触发（原有逻辑）
+      // 【并行触发方式1】停止打字防抖触发
       clearTimeout(SyncEngine.typingTimer);
-      SyncEngine.typingTimer = setTimeout(() => SyncEngine.execute(text, cursorIndex, true), 1500);
       
       // 【并行触发方式2】实时段落完成触发
       // 使用 SyncEngine 共享计数器检测段落变化
-      if (SyncEngine.updateParagraphCount(text)) {
+      const isParagraphCompleted = SyncEngine.updateParagraphCount(text);
+      
+      if (isParagraphCompleted) {
         // 段落完成，立即触发翻译（不等待防抖）
         const completedBlockIndex = SyncEngine.sharedParagraphCount - 2; // 刚完成的段落索引
         if (completedBlockIndex >= 0) {
           this.updateStatus('zh-status', '[段落完成] 立即翻译...');
           // 【修复】直接同步完成的段落，而不是调用 execute 遍历所有区块
           SyncEngine.syncCompletedBlock(text, completedBlockIndex);
+          // 【关键修复】段落已完成翻译，不需要再触发防抖
+          return;
         }
       }
+      
+      // 只有段落未完成时才设置防抖定时器
+      SyncEngine.typingTimer = setTimeout(() => SyncEngine.execute(text, cursorIndex, true), 1500);
       
       this._lastInputTime = now;
       TutorSystem.handleInput(text);
@@ -736,6 +815,43 @@ const UI = {
     if (ModelManager.switch(modelKey)) {
       const model = ModelManager.getCurrentModel();
       this.updateStatus('zh-status', `🤖 已切换: ${model.name}`);
+      setTimeout(() => this.updateStatus('zh-status', ''), 2000);
+    }
+  },
+  
+  // 【新增】处理模型选择变化（包括自定义模型）
+  handleModelChange(modelKey) {
+    const customInput = document.getElementById('custom-model-input');
+    
+    if (modelKey === 'Custom') {
+      // 显示自定义输入框
+      if (customInput) {
+        customInput.style.display = 'inline-block';
+        const savedCustom = localStorage.getItem('pd_custom_model_id');
+        if (savedCustom) {
+          customInput.value = savedCustom;
+        }
+        customInput.focus();
+      }
+      this.switchModel('Custom');
+    } else {
+      // 隐藏自定义输入框
+      if (customInput) {
+        customInput.style.display = 'none';
+      }
+      this.switchModel(modelKey);
+    }
+  },
+  
+  // 【新增】设置自定义模型ID
+  setCustomModel(modelId) {
+    if (!modelId || !modelId.trim()) {
+      alert('请输入有效的模型ID');
+      return;
+    }
+    
+    if (ModelManager.setCustomModelId(modelId.trim())) {
+      this.updateStatus('zh-status', `🤖 已设置自定义模型: ${modelId.trim()}`);
       setTimeout(() => this.updateStatus('zh-status', ''), 2000);
     }
   },
