@@ -316,6 +316,7 @@ const SyncEngine = {
   updateParagraphCount(text) {
     const count = text.split('\n\n').filter(p => p.trim()).length;
     const increased = count > this.sharedParagraphCount;
+    console.log(`[SyncEngine] updateParagraphCount: 当前段落数=${count}, 之前=${this.sharedParagraphCount}, 是否增加=${increased}`);
     if (increased) {
       this.sharedParagraphCount = count;
     }
@@ -432,11 +433,18 @@ const SyncEngine = {
 
   // 【新增】专门处理段落完成时的同步 - 只翻译完成的那个区块
   async syncCompletedBlock(fullText, blockIndex) {
+    console.log(`[SyncEngine] syncCompletedBlock 被调用: blockIndex=${blockIndex}`);
+    
     const currentBlocks = fullText.split('\n\n');
     const totalBlocks = currentBlocks.length;
     const blockContent = currentBlocks[blockIndex]?.trim();
     
-    if (!blockContent) return;
+    console.log(`[SyncEngine] 当前总段落数=${totalBlocks}, 完成段落内容="${blockContent?.slice(0, 50)}"`);
+    
+    if (!blockContent) {
+      console.log('[SyncEngine] 段落内容为空，跳过');
+      return;
+    }
     
     const targets = UI.getTargetConfigs();
     // 【修复】检查是否有目标列
@@ -444,6 +452,8 @@ const SyncEngine = {
       console.log('[SyncEngine] 没有目标列，跳过同步');
       return;
     }
+    
+    console.log(`[SyncEngine] 开始翻译完成的段落 ${blockIndex + 1}/${totalBlocks}`);
     
     // 更新内存
     this.sourceBlocksMemory[blockIndex] = currentBlocks[blockIndex];
@@ -765,6 +775,8 @@ const UI = {
       const currentParagraphCount = paragraphs.length;
       const now = Date.now();
       
+      console.log(`[UI] input事件: 文本长度=${text.length}, 段落数=${currentParagraphCount}, 光标所在段落=${cursorIndex}`);
+      
       this.updateStatus('zh-status', '⌨️ 输入中...');
       
       // 【并行触发方式1】停止打字防抖触发
@@ -774,19 +786,26 @@ const UI = {
       // 使用 SyncEngine 共享计数器检测段落变化
       const isParagraphCompleted = SyncEngine.updateParagraphCount(text);
       
+      console.log(`[UI] 段落是否完成=${isParagraphCompleted}, sharedParagraphCount=${SyncEngine.sharedParagraphCount}`);
+      
       if (isParagraphCompleted) {
         // 段落完成，立即触发翻译（不等待防抖）
         const completedBlockIndex = SyncEngine.sharedParagraphCount - 2; // 刚完成的段落索引
+        console.log(`[UI] 检测到段落完成, completedBlockIndex=${completedBlockIndex}`);
         if (completedBlockIndex >= 0) {
           this.updateStatus('zh-status', '[段落完成] 立即翻译...');
+          console.log(`[UI] 触发段落完成翻译: 段落 ${completedBlockIndex}`);
           // 【修复】直接同步完成的段落，而不是调用 execute 遍历所有区块
           SyncEngine.syncCompletedBlock(text, completedBlockIndex);
           // 【关键修复】段落已完成翻译，不需要再触发防抖
           return;
+        } else {
+          console.log(`[UI] completedBlockIndex < 0, 不触发翻译`);
         }
       }
       
       // 只有段落未完成时才设置防抖定时器
+      console.log(`[UI] 设置防抖定时器, 1500ms后执行execute`);
       SyncEngine.typingTimer = setTimeout(() => SyncEngine.execute(text, cursorIndex, true), 1500);
       
       this._lastInputTime = now;
