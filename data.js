@@ -44,7 +44,7 @@ const TUTOR_MODE_SETTINGS = {
   high: { charThreshold: 10, cooldownMinutes: 1, idleThreshold: 3000 },
   normal: { charThreshold: 50, cooldownMinutes: 3, idleThreshold: 5000 },
   low: { charThreshold: 200, cooldownMinutes: 5, idleThreshold: 8000 },
-  slow: { charThreshold: 5, cooldownMinutes: 2, idleThreshold: 60000 },
+  slow: { charThreshold: 5, cooldownMinutes: 2, idleThreshold: 5000, slowWriterThreshold: 60000 },
   manual: { charThreshold: Infinity, cooldownMinutes: 0, idleThreshold: Infinity }
 };
 

@@ -95,9 +95,9 @@ const Store = {
 
   getTheme() { return this.get('pd_theme', DEFAULT_THEME); },
   getTutor() { return this.get('current_tutor', DEFAULT_TUTOR); },
-  getCustomPresets() { return this.get('pd_custom_presets', {}); },
+  getCustomPresets() { return this.getObject('pd_custom_presets', {}); },
   getTutorConfig() {
-    return this.get('tutor_config', {
+    return this.getObject('tutor_config', {
       mode: 'normal',
       charThreshold: 50,
       cooldownMinutes: 3,
@@ -149,12 +149,15 @@ const ModelManager = {
 // 4. API 层 (API) - 引入指数退避重试与 AbortController
 // ==========================================
 const API = {
-  async call(text, systemPrompt, temp = 0.2, signal = null, retries = 2) {
+  // 【修复】简化超时控制，避免复杂的 signal 组合
+  async call(text, systemPrompt, temp = 0.2, externalSignal = null, retries = 2) {
     const cleanText = Utils.cleanText(text);
     const cleanPrompt = Utils.cleanText(systemPrompt);
 
-    if (!CONFIG.API_KEY || CONFIG.API_KEY === 'sk-your-real-api-key-here') {
-      throw new Error('API_KEY not configured');
+    // 【修复】更严格的 API_KEY 检查
+    const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key', ''];
+    if (!CONFIG.API_KEY || invalidKeys.some(k => CONFIG.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
+      throw new Error('API_KEY not configured or invalid');
     }
 
     const payload = {
@@ -166,31 +169,91 @@ const API = {
       temperature: temp
     };
 
-    // 指数退避重试机制 (防御性编程)
+    console.log('[API] 准备请求:', {
+      url: CONFIG.API_URL,
+      model: payload.model,
+      textLength: cleanText.length
+    });
+
+    // 指数退避重试机制
     for (let i = 0; i <= retries; i++) {
+      // 【修复】使用 AbortController.timeout 如果浏览器支持，否则用 setTimeout
+      const controller = new AbortController();
+      let timeoutId = null;
+      
+      // 外部 signal 中断处理
+      const onExternalAbort = () => {
+        console.log('[API] 收到外部中断信号');
+        if (timeoutId) clearTimeout(timeoutId);
+        controller.abort();
+      };
+      
+      if (externalSignal) {
+        externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+      }
+      
+      // 30秒超时
+      timeoutId = setTimeout(() => {
+        console.log('[API] 请求超时，自动中断');
+        controller.abort();
+      }, 30000);
+      
       try {
+        console.log(`[API] 发送请求 (尝试 ${i + 1}/${retries + 1})...`);
+        const startTime = Date.now();
+        
         const response = await fetch(CONFIG.API_URL, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            'Accept': 'application/json; charset=utf-8',
+            'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + CONFIG.API_KEY
           },
           body: JSON.stringify(payload),
-          signal: signal // 支持外部中断请求
+          signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+        if (externalSignal) {
+          externalSignal.removeEventListener('abort', onExternalAbort);
+        }
+        
+        console.log(`[API] 响应收到: HTTP ${response.status}, 耗时 ${Date.now() - startTime}ms`);
+
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+          const errorText = await response.text();
+          console.error('[API] HTTP 错误:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
+        console.log('[API] 解析成功');
         return data.choices[0].message.content.trim();
       } catch (err) {
-        if (err.name === 'AbortError') throw err; // 被主动中断的请求不重试
-        if (i === retries) throw err; // 最后一次重试失败，抛出异常
-        console.warn(`[API] 请求失败，${Math.pow(2, i)}秒后进行第 ${i + 1} 次重试...`, err);
-        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); 
+        clearTimeout(timeoutId);
+        if (externalSignal) {
+          externalSignal.removeEventListener('abort', onExternalAbort);
+        }
+        
+        // 【修复】正确处理 AbortError
+        if (err.name === 'AbortError') {
+          // 如果是外部触发的 abort（用户主动中断），直接抛出
+          if (externalSignal?.aborted) {
+            console.log('[API] 请求被用户中断');
+            throw err;
+          }
+          // 否则是超时导致的 abort
+          console.error('[API] 请求超时 (30秒)');
+          if (i === retries) throw new Error('请求超时，请检查网络连接');
+          // 超时时继续重试
+        } else {
+          // 其他错误
+          console.error(`[API] 请求失败 (尝试 ${i + 1}/${retries + 1}):`, err);
+          if (i === retries) throw err;
+        }
+        
+        const delay = 1000 * Math.pow(2, i);
+        console.warn(`[API] ${delay/1000}秒后进行第 ${i + 1} 次重试...`);
+        await new Promise(r => setTimeout(r, delay)); 
       }
     }
   }
@@ -258,6 +321,12 @@ const SyncEngine = {
     const currentBlocks = fullText.split('\n\n');
     const tasks = [];
     const targets = UI.getTargetConfigs(); // 获取目标列的配置数据
+    
+    // 【修复】检查是否有目标列
+    if (!targets || targets.length === 0) {
+      console.log('[SyncEngine] 没有目标列，跳过同步');
+      return;
+    }
 
     for (let i = 0; i < currentBlocks.length; i++) {
       if (currentBlocks[i] !== this.sourceBlocksMemory[i] && currentBlocks[i].trim() !== '') {
@@ -320,10 +389,15 @@ const SyncEngine = {
     
     if (!blockContent) return;
     
+    const targets = UI.getTargetConfigs();
+    // 【修复】检查是否有目标列
+    if (!targets || targets.length === 0) {
+      console.log('[SyncEngine] 没有目标列，跳过同步');
+      return;
+    }
+    
     // 更新内存
     this.sourceBlocksMemory[blockIndex] = currentBlocks[blockIndex];
-    
-    const targets = UI.getTargetConfigs();
     
     try {
       if (Utils.isHeading(blockContent)) {
@@ -351,23 +425,37 @@ const SyncEngine = {
 
   async translateBlock(text, index, totalBlocks, targets, asHeading = false) {
     const presets = UI.currentPresets;
+    const reqKeyPrefix = `block-${index}`;
+    console.log(`[SyncEngine] translateBlock: 段落 ${index + 1}, 目标列数 ${targets.length}`);
 
-    // 【修复】并行执行所有目标列的翻译，提高性能
+    // 【关键修复】使用 Promise.all 并行处理所有目标列
     const translationTasks = targets.map(async (target) => {
-      const reqKey = `${target.id}-block-${index}`;
+      const reqKey = `${target.id}-${reqKeyPrefix}`;
       
-      // 【并发安全控制】中断该区块旧的 API 请求
-      if (this.activeRequests[reqKey]) {
-        this.activeRequests[reqKey].abort();
+      // 【关键修复】先创建新的 controller，再中断旧的，避免竞态
+      const newController = new AbortController();
+      
+      // 安全地中断旧请求
+      const oldController = this.activeRequests[reqKey];
+      if (oldController) {
+        console.log(`[SyncEngine] 中断旧请求: ${reqKey}`);
+        oldController.abort();
+        // 【关键修复】等待一小段时间确保旧请求完全清理
+        await new Promise(r => setTimeout(r, 50));
       }
-      const controller = new AbortController();
-      this.activeRequests[reqKey] = controller;
+      
+      // 现在才设置新的 controller
+      this.activeRequests[reqKey] = newController;
 
       UI.updateStatus(target.statusId, `🔄 翻译段落 ${index + 1}...`);
 
       try {
         const prompt = this.buildPrompt(text, target.lang, presets[target.style], target.latinConfig);
-        let result = await API.call(text, prompt, CONFIG.TEMPERATURE, controller.signal);
+        console.log(`[SyncEngine] 开始翻译: ${target.id}`);
+        
+        let result = await API.call(text, prompt, CONFIG.TEMPERATURE, newController.signal);
+        
+        console.log(`[SyncEngine] 翻译完成: ${target.id}, 结果长度 ${result.length}`);
         
         // 如果是标题，添加 # 前缀
         if (asHeading && !result.startsWith('#')) {
@@ -377,18 +465,22 @@ const SyncEngine = {
         UI.updateTargetBlock(target.id, index, result, totalBlocks);
         UI.updateStatus(target.statusId, '✓');
       } catch (err) {
-        if (err.name !== 'AbortError') {
+        if (err.name === 'AbortError') {
+          console.log(`[SyncEngine] 请求被中断(正常): ${target.id}`);
+        } else {
           UI.updateStatus(target.statusId, '⚠️ 错误');
-          console.error(`Translation error for ${target.id}:`, err);
+          console.error(`[SyncEngine] 翻译错误 ${target.id}:`, err);
         }
       } finally {
-        if (this.activeRequests[reqKey] === controller) {
+        // 【关键修复】只删除属于自己这个请求的 controller
+        if (this.activeRequests[reqKey] === newController) {
           delete this.activeRequests[reqKey];
         }
       }
     });
 
     await Promise.allSettled(translationTasks);
+    console.log(`[SyncEngine] translateBlock 完成: 段落 ${index + 1}`);
   }
 };
 
@@ -565,8 +657,10 @@ const UI = {
       }
     }
 
-    if (typeof CONFIG === 'undefined' || !CONFIG.API_KEY || CONFIG.API_KEY === 'sk-your-real-api-key-here') {
-      alert('[Warning] 请先在 config.js 中配置 API_KEY！');
+    // 【修复】更严格的 API_KEY 检查
+    const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key', ''];
+    if (typeof CONFIG === 'undefined' || !CONFIG.API_KEY || invalidKeys.some(k => CONFIG.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
+      alert('[Warning] 请先在 config.js 中配置有效的 API_KEY！');
     }
 
     // 100% 同步初始化，data.js 已加载 TUTORS
@@ -625,7 +719,7 @@ const UI = {
     });
     document.getElementById('workspace').addEventListener('click', () => this.wakeUpEditors());
     
-    document.getElementById('btn-roast').addEventListener('click', () => {
+    document.getElementById('btn-roast')?.addEventListener('click', () => {
       TutorSystem.roastManual(document.getElementById('editor-zh').value.trim());
     });
   },
@@ -980,5 +1074,13 @@ const App = {
     });
   }
 };
+
+// 【修复】页面卸载时清理进行中的请求，避免内存泄漏
+window.addEventListener('beforeunload', () => {
+  console.log('[App] 页面卸载，清理进行中的请求...');
+  Object.values(SyncEngine.activeRequests).forEach(controller => {
+    try { controller.abort(); } catch (e) {}
+  });
+});
 
 document.addEventListener('DOMContentLoaded', () => App.init());
