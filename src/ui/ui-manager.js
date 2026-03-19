@@ -299,7 +299,16 @@ export const UI = {
 
   updateStatus(elementId, text) {
     const el = typeof elementId === 'string' ? document.getElementById(elementId) : elementId;
-    if (el) el.textContent = text;
+    if (!el) return;
+    
+    const isLoading = text.includes('🔄') || text.includes('翻译中') || text.includes('同步中');
+    
+    if (isLoading) {
+      el.innerHTML = `<span class="status-loading">${text}</span>`;
+    } else {
+      el.textContent = text;
+      el.classList.remove('status-loading');
+    }
   },
 
   getTargetConfigs() {
