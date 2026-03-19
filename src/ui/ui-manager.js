@@ -67,7 +67,8 @@ export const UI = {
     const tutorSelect = document.getElementById('tutor-select');
     if (tutorSelect) {
       tutorSelect.innerHTML = Utils.buildTutorOptions(TUTORS);
-      tutorSelect.value = Store.getTutor(); 
+      const savedTutor = Store.getTutor() || 'random';
+      tutorSelect.value = savedTutor; 
     }
     
     document.getElementById('tutor-mode').value = TutorSystem.config.mode;
@@ -95,9 +96,8 @@ export const UI = {
     
     this.subscribeToEvents();
     
-    const savedTutor = Store.getTutor();
-    if (TUTORS[savedTutor]) TutorSystem.switch(savedTutor);
-    else TutorSystem.switch('marcus');
+    const savedTutor = Store.getTutor() || 'random';
+    TutorSystem.switch(savedTutor);
   },
 
   bindEvents() {

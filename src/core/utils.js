@@ -44,7 +44,9 @@ export const Utils = {
     const ageLabels = { teen: '少年', young: '青年', adult: '中年' };
     const genderLabels = { male: '男', female: '女' };
     
-    return Object.values(tutors).map(tutor => {
+    let options = `<option value="random">🎲 [随机] 助教随机出没</option>`;
+    
+    return options + Object.values(tutors).map(tutor => {
       const ageLabel = ageLabels[tutor.ageGroup] || '';
       const genderLabel = genderLabels[tutor.gender] || '';
       return `<option value="${tutor.id}">[${tutor.country.toUpperCase()}] ${tutor.name} ${genderLabel} ${ageLabel}</option>`;

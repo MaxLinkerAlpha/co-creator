@@ -16,15 +16,14 @@ export const GENDER_LABELS = {
 };
 
 export const SUPPORTED_LANGUAGES = [
-  { code: "English", label: "[EN] 英语 (English)" },
-  { code: "Japanese", label: "[JP] 日语 (日本語)" },
-  { code: "Traditional Chinese", label: "[HK] 繁体中文" },
-  { code: "Spanish", label: "[ES] 西班牙语 (Español)" },
-  { code: "French", label: "[FR] 法语 (Français)" },
-  { code: "German", label: "[DE] 德语 (Deutsch)" },
-  { code: "Russian", label: "[RU] 俄语 (Русский)" },
-  { code: "Arabic", label: "[SA] 阿拉伯语 (العربية)" },
-  { code: "Latin", label: "[SPQR] 拉丁语 (Latina)" }
+  { code: "English", label: "🇬🇧 英语 (English)" },
+  { code: "Japanese", label: "🇯🇵 日语 (日本語)" },
+  { code: "Spanish", label: "🇪🇸 西班牙语 (Español)" },
+  { code: "French", label: "🇫🇷 法语 (Français)" },
+  { code: "German", label: "🇩🇪 德语 (Deutsch)" },
+  { code: "Russian", label: "🇷🇺 俄语 (Русский)" },
+  { code: "Arabic", label: "🇸🇦 阿拉伯语 (العربية)" },
+  { code: "Latin", label: "🏛️ 拉丁语 (Latina)" }
 ];
 
 export const DEFAULT_PRESETS = {
@@ -42,11 +41,11 @@ export const TUTOR_MODE_SETTINGS = {
 };
 
 export const LATIN_VARIANTS = [
-  { code: "Classical Latin", label: "古典拉丁语 (Classical)" },
-  { code: "Ecclesiastical Latin", label: "教会拉丁语 (Ecclesiastical)" },
-  { code: "Spoken Latin", label: "现代口语拉丁语 (Spoken)" },
-  { code: "Vulgar Latin", label: "通俗拉丁语 (Vulgar)" }
+  { value: "Classical Latin", label: "古典拉丁语 (Classical)" },
+  { value: "Ecclesiastical Latin", label: "教会拉丁语 (Ecclesiastical)" },
+  { value: "Spoken Latin", label: "现代口语拉丁语 (Spoken)" },
+  { value: "Vulgar Latin", label: "通俗拉丁语 (Vulgar)" }
 ];
 
 export const DEFAULT_THEME = 'theme-apple';
-export const DEFAULT_TUTOR = 'marcus';
+export const DEFAULT_TUTOR = 'random';

@@ -13,6 +13,7 @@ import { TUTOR_MODE_SETTINGS } from '../data/constants.js';
 
 export const TutorSystem = {
   current: 'marcus',
+  isRandomMode: true,
   config: null,
   lastRoastTime: 0,
   lastTextLength: 0,
@@ -24,16 +25,42 @@ export const TutorSystem = {
   init() {
     this.config = Store.getTutorConfig();
     const savedTutor = Store.getTutor();
-    if (TUTORS[savedTutor]) {
+    if (savedTutor === 'random') {
+      this.isRandomMode = true;
+      this.current = this._getRandomTutor();
+    } else if (TUTORS[savedTutor]) {
+      this.isRandomMode = false;
       this.current = savedTutor;
     }
   },
 
+  _getRandomTutor() {
+    const tutorIds = Object.keys(TUTORS);
+    return tutorIds[Math.floor(Math.random() * tutorIds.length)];
+  },
+
+  _getCurrentTutor() {
+    if (this.isRandomMode) {
+      return this._getRandomTutor();
+    }
+    return this.current;
+  },
+
   switch(tutorId) {
+    if (tutorId === 'random') {
+      this.isRandomMode = true;
+      this.current = this._getRandomTutor();
+      Store.set('current_tutor', 'random');
+      eventBus.emit(EVENTS.TUTOR_SWITCHED, { tutorId: 'random' });
+      console.log('[TutorSystem] Switched to random mode');
+      return true;
+    }
+    
     if (!TUTORS[tutorId]) {
       console.error('[TutorSystem] Unknown tutor:', tutorId);
       return false;
     }
+    this.isRandomMode = false;
     this.current = tutorId;
     Store.set('current_tutor', tutorId);
     eventBus.emit(EVENTS.TUTOR_SWITCHED, { tutorId });
@@ -128,13 +155,15 @@ export const TutorSystem = {
     
     this.lastRoastTime = Date.now();
     this.charsSinceLastRoast = 0;
-    const tutor = TUTORS[this.current];
+    
+    const actualTutorId = this._getCurrentTutor();
+    const tutor = TUTORS[actualTutorId];
     
     try {
       const response = await API.call(textToAnalyze, contextPrompt, 0.8, controller.signal);
       eventBus.emit(EVENTS.TUTOR_ROAST, { 
         message: response, 
-        tutorId: this.current,
+        tutorId: actualTutorId,
         isBrief 
       });
     } catch (err) {
@@ -154,17 +183,19 @@ export const TutorSystem = {
   async triggerBriefRoast(text) {
     if (!text || text.length < 5) return;
     const latestParagraph = text.split('\n\n').pop().slice(0, 100);
-    const tutor = TUTORS[this.current];
+    const actualTutorId = this._getCurrentTutor();
+    const tutor = TUTORS[actualTutorId];
     const prompt = `${tutor.briefPrompt}\n\n用户正在写的内容："${latestParagraph}"`;
     await this._executeRoast(latestParagraph, prompt, true);
   },
 
   async roastManual(text) {
-    const tutor = TUTORS[this.current];
+    const actualTutorId = this._getCurrentTutor();
+    const tutor = TUTORS[actualTutorId];
     if (!text) {
       eventBus.emit(EVENTS.TUTOR_ROAST, { 
         message: tutor.intro, 
-        tutorId: this.current,
+        tutorId: actualTutorId,
         isBrief: false,
         isIntro: true
       });
