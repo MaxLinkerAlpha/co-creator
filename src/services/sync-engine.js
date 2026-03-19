@@ -76,6 +76,22 @@ export const SyncEngine = {
       return;
     }
 
+    if (this.sourceBlocksMemory.length > 0) {
+      const deletedIndices = [];
+      for (let i = 0; i < this.sourceBlocksMemory.length; i++) {
+        const prevBlock = this.sourceBlocksMemory[i]?.trim();
+        const currBlock = currentBlocks[i]?.trim();
+        
+        if (prevBlock && !currBlock && i < currentBlocks.length) {
+          deletedIndices.push(i);
+        }
+      }
+      
+      if (deletedIndices.length > 0) {
+        uiCallbacks.deleteTargetBlocks(deletedIndices);
+      }
+    }
+
     for (let i = 0; i < currentBlocks.length; i++) {
       if (currentBlocks[i] !== this.sourceBlocksMemory[i] && currentBlocks[i].trim() !== '') {
         if (forceSyncCurrentBlock || i !== cursorIndex) {

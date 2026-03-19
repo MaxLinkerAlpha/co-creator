@@ -331,6 +331,7 @@ export const UI = {
       getTargetBlockContent: (index) => this.getTargetBlockContent(index),
       syncHeadingToAllTargets: (index, totalBlocks) => this.syncHeadingToAllTargets(index, totalBlocks),
       trimTargetBlocks: (length) => this.trimTargetBlocks(length),
+      deleteTargetBlocks: (indices) => this.deleteTargetBlocks(indices),
       checkAutoPreview: () => this.checkAutoPreview(),
       getPreset: (style) => this.currentPresets[style] || DEFAULT_PRESETS.game
     };
@@ -378,6 +379,22 @@ export const UI = {
       const blocks = col.editor.value.split('\n\n');
       if (blocks.length > length) {
         col.editor.value = blocks.slice(0, length).join('\n\n');
+      }
+    }
+  },
+
+  deleteTargetBlocks(indices) {
+    if (!indices || indices.length === 0) return;
+    
+    for (const col of this.targetColumns) {
+      const blocks = col.editor.value.split('\n\n');
+      const newBlocks = blocks.filter((_, i) => !indices.includes(i));
+      col.editor.value = newBlocks.join('\n\n');
+    }
+    
+    for (const idx of indices.sort((a, b) => a - b)) {
+      if (idx < SyncEngine.sourceBlocksMemory.length) {
+        SyncEngine.sourceBlocksMemory.splice(idx, 1);
       }
     }
   },
