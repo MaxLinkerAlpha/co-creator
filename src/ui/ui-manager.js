@@ -593,11 +593,13 @@ export const UI = {
   },
 
   showWelcomeTip() {
-    const hasShown = localStorage.getItem('pd_welcome_shown');
-    if (hasShown) return;
-    
     const savedKey = localStorage.getItem('pd_custom_api_key') || '';
     const savedUrl = localStorage.getItem('pd_custom_api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
+    
+    const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key'];
+    const hasValidKey = savedKey && !invalidKeys.some(k => k && savedKey.toLowerCase().includes(k.toLowerCase()));
+    
+    if (hasValidKey) return;
     
     const tip = document.createElement('div');
     tip.id = 'welcome-tip';
@@ -639,8 +641,6 @@ export const UI = {
       localStorage.setItem('pd_custom_api_url', apiUrl);
     }
     
-    localStorage.setItem('pd_welcome_shown', 'true');
-    
     const tip = document.getElementById('welcome-tip');
     if (tip) {
       tip.remove();
@@ -649,18 +649,6 @@ export const UI = {
     const modelBtn = document.getElementById('model-btn');
     if (modelBtn) {
       modelBtn.textContent = 'Qwen2.5-7B';
-    }
-  },
-
-  openCustomModelConfig() {
-    localStorage.setItem('pd_welcome_shown', 'true');
-    const modelGroup = document.querySelector('#model-menu')?.closest('.toolbar-group');
-    if (modelGroup) {
-      modelGroup.classList.add('expanded');
-    }
-    const customOption = document.querySelector('[data-model="Custom"]');
-    if (customOption) {
-      customOption.click();
     }
   },
 
