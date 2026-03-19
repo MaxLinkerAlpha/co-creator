@@ -472,6 +472,10 @@ body {
     font-weight: 600;
 }
 
+.welcome-tip-header span {
+    flex: 1;
+}
+
 .welcome-tip-close {
     background: none;
     border: none;
@@ -480,6 +484,11 @@ body {
     opacity: 0.5;
     padding: 0;
     line-height: 1;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .welcome-tip-close:hover {
@@ -498,6 +507,10 @@ body {
 
 .welcome-tip-body p:last-child {
     margin-bottom: 0;
+}
+
+.welcome-tip-body a {
+    text-decoration: underline;
 }
 
 .welcome-tip-footer {
