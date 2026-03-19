@@ -283,14 +283,16 @@ export const SyncEngine = {
       
       const zhEditor = document.getElementById('editor-zh');
       const zhBlocks = zhEditor.value.split('\n\n');
-      zhBlocks[cursorIndex] = result;
       
-      while (zhBlocks.length < currentBlocks.length) {
-        zhBlocks.push('');
+      if (cursorIndex < zhBlocks.length) {
+        zhBlocks[cursorIndex] = result;
+        zhEditor.value = zhBlocks.join('\n\n');
+        uiCallbacks.updateStatus('zh-status', '✓ 逆向翻译完成');
+      } else {
+        console.warn('[SyncEngine] 逆向翻译：cursorIndex 超出源文本段落范围，跳过更新');
+        uiCallbacks.updateStatus('zh-status', '⚠️ 段落不匹配');
       }
       
-      zhEditor.value = zhBlocks.join('\n\n');
-      uiCallbacks.updateStatus('zh-status', '✓ 逆向翻译完成');
       setTimeout(() => uiCallbacks.updateStatus('zh-status', ''), 2000);
       
       eventBus.emit(EVENTS.SYNC_INVERSE_COMPLETED, { cursorIndex, result });

@@ -66,6 +66,11 @@ export const UI = {
 
     this.bindEvents();
     
+    const savedSourceText = Store.getSourceText();
+    if (savedSourceText) {
+      document.getElementById('editor-zh').value = savedSourceText;
+    }
+    
     const savedColumns = Store.getTargetColumns();
     if (savedColumns.length > 0) {
       savedColumns.forEach(col => {
@@ -73,11 +78,6 @@ export const UI = {
       });
     } else {
       this.addTargetColumn('English', 'concise');
-    }
-    
-    const savedSourceText = Store.getSourceText();
-    if (savedSourceText) {
-      document.getElementById('editor-zh').value = savedSourceText;
     }
     
     this.subscribeToEvents();
