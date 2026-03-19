@@ -12,7 +12,7 @@ import { ModelManager } from '../services/model-manager.js';
 import { SyncEngine } from '../services/sync-engine.js';
 import { TutorSystem } from '../features/tutor-system.js';
 import { TUTORS } from '../data/tutors.js';
-import { DEFAULT_PRESETS, SUPPORTED_LANGUAGES } from '../data/constants.js';
+import { DEFAULT_PRESETS, SUPPORTED_LANGUAGES, LATIN_VARIANTS } from '../data/constants.js';
 
 export const UI = {
   targetColumns: [],
@@ -69,7 +69,7 @@ export const UI = {
     const savedColumns = Store.getTargetColumns();
     if (savedColumns.length > 0) {
       savedColumns.forEach(col => {
-        this.addTargetColumn(col.lang, col.style, col.content);
+        this.addTargetColumn(col.lang, col.style, col.content, col.latinConfig);
       });
     } else {
       this.addTargetColumn('English', 'concise');
@@ -507,7 +507,8 @@ export const UI = {
       id: t.id,
       lang: t.langSel.value,
       style: t.styleSel.value,
-      statusId: t.statusEl
+      statusId: t.statusEl,
+      latinConfig: t.latinConfig || { style: 'Classical', useMacron: false }
     }));
   },
 
@@ -733,7 +734,7 @@ export const UI = {
     // Placeholder for editor wake-up logic
   },
 
-  addTargetColumn(defaultLang = 'English', defaultStyle = 'concise', savedContent = '') {
+  addTargetColumn(defaultLang = 'English', defaultStyle = 'concise', savedContent = '', savedLatinConfig = null) {
     this.columnCounter++;
     const colId = `target-col-${this.columnCounter}`;
     const colDiv = document.createElement('div');
@@ -741,6 +742,10 @@ export const UI = {
     colDiv.id = colId;
     colDiv.draggable = true;
     colDiv.dataset.colId = colId;
+
+    const isLatin = defaultLang.startsWith('Latin');
+    const latinVariant = isLatin ? LATIN_VARIANTS.find(v => v.code === defaultLang) : null;
+    const defaultMacron = savedLatinConfig?.useMacron ?? latinVariant?.defaultMacron ?? false;
 
     colDiv.innerHTML = `
       <div class="col-header">
@@ -752,6 +757,12 @@ export const UI = {
           <select class="col-select style-sel">
             ${Utils.buildStyleOptions(defaultStyle, this.currentPresets, DEFAULT_PRESETS)}
           </select>
+          <div class="latin-config" style="display: ${isLatin ? 'flex' : 'none'}; align-items: center; gap: 4px; margin-left: 8px;">
+            <label class="macron-toggle" title="是否使用长音符号 (ā, ē, ī, ō, ū)">
+              <input type="checkbox" class="macron-checkbox" ${defaultMacron ? 'checked' : ''}>
+              <span class="macron-label">长音</span>
+            </label>
+          </div>
         </div>
         <button class="col-close-btn" title="关闭目标栏">✕</button>
         <span class="col-status-placeholder"></span>
@@ -766,14 +777,30 @@ export const UI = {
       id: colId,
       langSel: colDiv.querySelector('.lang-sel'),
       styleSel: colDiv.querySelector('.style-sel'),
+      macronCheckbox: colDiv.querySelector('.macron-checkbox'),
+      latinConfigDiv: colDiv.querySelector('.latin-config'),
       editor: colDiv.querySelector('.target-textarea'),
       previewArea: colDiv.querySelector('.target-preview'),
       statusEl: colDiv.querySelector('.col-status'),
-      memoryBlocks: []
+      memoryBlocks: [],
+      latinConfig: {
+        style: latinVariant?.label?.split(' ')[1] || 'Classical',
+        useMacron: defaultMacron
+      }
     };
 
-    target.langSel.addEventListener('change', () => this.saveCurrentState());
+    target.langSel.addEventListener('change', () => {
+      this.updateLatinConfigVisibility(target);
+      this.saveCurrentState();
+    });
     target.styleSel.addEventListener('change', () => this.saveCurrentState());
+    if (target.macronCheckbox) {
+      target.macronCheckbox.addEventListener('change', () => {
+        target.latinConfig.useMacron = target.macronCheckbox.checked;
+        target.macronCheckbox.setAttribute('data-user-set', 'true');
+        this.saveCurrentState();
+      });
+    }
     colDiv.querySelector('.col-close-btn').addEventListener('click', () => this.removeTargetColumn(colId));
     target.editor.addEventListener('input', Utils.debounce(() => {
       this.handleInverseSync(target);
@@ -791,6 +818,23 @@ export const UI = {
     
     this.targetColumns.push(target);
     this.saveCurrentState();
+  },
+
+  updateLatinConfigVisibility(target) {
+    const isLatin = target.langSel.value.startsWith('Latin');
+    if (target.latinConfigDiv) {
+      target.latinConfigDiv.style.display = isLatin ? 'flex' : 'none';
+    }
+    if (isLatin) {
+      const variant = LATIN_VARIANTS.find(v => v.code === target.langSel.value);
+      if (variant) {
+        target.latinConfig.style = variant.label.split(' ')[1] || 'Classical';
+        if (target.macronCheckbox && !target.macronCheckbox.hasAttribute('data-user-set')) {
+          target.macronCheckbox.checked = variant.defaultMacron;
+          target.latinConfig.useMacron = variant.defaultMacron;
+        }
+      }
+    }
   },
 
   setupColumnDragDrop(colDiv) {
@@ -872,7 +916,8 @@ export const UI = {
     const columns = this.targetColumns.map(col => ({
       lang: col.langSel.value,
       style: col.styleSel.value,
-      content: col.editor.value
+      content: col.editor.value,
+      latinConfig: col.latinConfig || { style: 'Classical', useMacron: false }
     }));
     Store.saveTargetColumns(columns);
     Store.saveSourceText(document.getElementById('editor-zh')?.value || '');

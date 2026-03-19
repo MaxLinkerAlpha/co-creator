@@ -35,18 +35,40 @@ export const SyncEngine = {
     let finalLang = targetLang;
     const rules = [];
 
-    if (targetLang === 'Latin') {
-      finalLang = latinConfig.style;
+    if (targetLang.startsWith('Latin')) {
+      if (latinConfig && latinConfig.style) {
+        finalLang = latinConfig.style;
+      } else {
+        const variantMap = {
+          'Latin:Classical': 'Classical Latin',
+          'Latin:Ecclesiastical': 'Ecclesiastical Latin',
+          'Latin:Spoken': 'Spoken (Modern) Latin',
+          'Latin:Vulgar': 'Vulgar Latin'
+        };
+        finalLang = variantMap[targetLang] || 'Latin';
+      }
+      
       rules.push('');
       rules.push('## Latin Specific Rules:');
-      rules.push(latinConfig.useMacron
-        ? '- MUST use macrons (ā, ē, ī, ō, ū) correctly.'
-        : '- DO NOT use any macrons or diacritics.');
+      
+      if (latinConfig && latinConfig.useMacron) {
+        rules.push('- MUST use macrons (ā, ē, ī, ō, ū) correctly for all long vowels.');
+      } else {
+        rules.push('- DO NOT use any macrons or diacritics. Write plain Latin text.');
+      }
 
-      if (latinConfig.style.includes('Spoken')) {
+      if (targetLang.includes('Ecclesiastical')) {
+        rules.push('- Use Ecclesiastical Latin vocabulary and style (Church Latin).');
+        rules.push('- Follow Italianate pronunciation conventions in word choice.');
+      } else if (targetLang.includes('Spoken')) {
         rules.push('- Use modern Spoken Latin conventions.');
-      } else if (latinConfig.style.includes('Vulgar')) {
+        rules.push('- Prefer simpler, conversational vocabulary.');
+      } else if (targetLang.includes('Vulgar')) {
         rules.push('- Use colloquial vocabulary and simplified grammar.');
+        rules.push('- Reflect the everyday speech of common Romans.');
+      } else if (targetLang.includes('Classical')) {
+        rules.push('- Use Classical Latin vocabulary and style.');
+        rules.push('- Follow Golden Age Latin conventions (Cicero, Caesar, Vergil).');
       }
     }
 
