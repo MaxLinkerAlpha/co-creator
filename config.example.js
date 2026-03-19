@@ -5,7 +5,7 @@
  * 
  * 使用说明：
  * 1. 重命名此文件为 config.js
- * 2. 在 config.js 中填入你的真实 API 密钥
+ * 2. 在 config.js 中填入你的真实 API 密钥（必填！免费模型也必须先填！）
  * 3. 不要提交 config.js 到公共仓库（已在 .gitignore 中配置）
  * 
  * 配置说明：
