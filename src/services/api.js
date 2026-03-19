@@ -30,7 +30,8 @@ export const API = {
         { role: 'user', content: cleanText }
       ],
       temperature: temp,
-      max_tokens: 8192
+      max_tokens: 2048,
+      enable_thinking: false
     };
 
     console.log('[API] 准备请求:', { 
