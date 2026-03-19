@@ -167,6 +167,12 @@ export const UI = {
         preview.innerHTML = marked.parse(textarea.value);
       }
     });
+    
+    const zhEditor = document.getElementById('editor-zh');
+    const zhPreview = document.getElementById('preview-zh');
+    if (zhEditor && zhPreview) {
+      zhPreview.innerHTML = marked.parse(zhEditor.value);
+    }
   },
 
   exitPreviewMode() {
