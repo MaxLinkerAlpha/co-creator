@@ -20,6 +20,8 @@ export const UI = {
   currentPresets: { ...DEFAULT_PRESETS },
   isPreviewMode: false,
   tutorBubbleTimer: null,
+  autoPreviewTimer: null,
+  _lastInputTime: 0,
 
   getAvailableModels() {
     return window.AVAILABLE_MODELS || AVAILABLE_MODELS || {};
@@ -81,7 +83,7 @@ export const UI = {
 
   bindEvents() {
     const elZh = document.getElementById('editor-zh');
-    this._lastInputTime = 0;
+    const autoPreviewToggle = document.getElementById('auto-preview-toggle');
     
     elZh.addEventListener('input', (e) => {
       const text = elZh.value;
@@ -90,6 +92,11 @@ export const UI = {
       this.updateStatus('zh-status', '⌨️ 输入中...');
       
       clearTimeout(SyncEngine.typingTimer);
+      clearTimeout(this.autoPreviewTimer);
+      
+      if (this.isPreviewMode && autoPreviewToggle?.checked) {
+        this.exitPreviewMode();
+      }
       
       const isParagraphCompleted = SyncEngine.updateParagraphCount(text);
       
@@ -103,6 +110,7 @@ export const UI = {
               () => this.getTargetConfigs(), 
               this.getUICallbacks()
             );
+            this.scheduleAutoPreview();
             return;
           }
         }
@@ -113,6 +121,7 @@ export const UI = {
           () => this.getTargetConfigs(), 
           this.getUICallbacks()
         );
+        this.scheduleAutoPreview();
       }, 1500);
       
       this._lastInputTime = Date.now();
@@ -126,6 +135,52 @@ export const UI = {
     
     document.getElementById('btn-roast')?.addEventListener('click', () => {
       TutorSystem.roastManual(document.getElementById('editor-zh').value.trim());
+    });
+  },
+
+  scheduleAutoPreview() {
+    const autoPreviewToggle = document.getElementById('auto-preview-toggle');
+    if (!autoPreviewToggle?.checked) return;
+    
+    clearTimeout(this.autoPreviewTimer);
+    this.autoPreviewTimer = setTimeout(() => {
+      if (autoPreviewToggle.checked && !this.isPreviewMode) {
+        this.enterPreviewMode();
+      }
+    }, 3000);
+  },
+
+  enterPreviewMode() {
+    this.isPreviewMode = true;
+    
+    const editors = document.querySelectorAll('.target-textarea, #editor-zh');
+    const previews = document.querySelectorAll('.target-preview, #preview-zh');
+    
+    editors.forEach(editor => {
+      editor.style.display = 'none';
+    });
+    
+    previews.forEach(preview => {
+      preview.style.display = 'block';
+      const textarea = preview.previousElementSibling;
+      if (textarea && textarea.tagName === 'TEXTAREA') {
+        preview.innerHTML = marked.parse(textarea.value);
+      }
+    });
+  },
+
+  exitPreviewMode() {
+    this.isPreviewMode = false;
+    
+    const editors = document.querySelectorAll('.target-textarea, #editor-zh');
+    const previews = document.querySelectorAll('.target-preview, #preview-zh');
+    
+    editors.forEach(editor => {
+      editor.style.display = 'block';
+    });
+    
+    previews.forEach(preview => {
+      preview.style.display = 'none';
     });
   },
 
@@ -287,8 +342,8 @@ export const UI = {
 
   checkAutoPreview() {
     const autoPreviewToggle = document.getElementById('auto-preview-toggle');
-    if (autoPreviewToggle && autoPreviewToggle.checked) {
-      this.toggleGlobalPreview(true);
+    if (autoPreviewToggle && autoPreviewToggle.checked && !this.isPreviewMode) {
+      this.enterPreviewMode();
     }
   },
 
