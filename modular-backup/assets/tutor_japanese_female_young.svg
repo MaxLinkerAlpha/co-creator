@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="48" fill="#fff" stroke="#bc002d" stroke-width="3"/>
+  
+  <!-- 日之丸 -->
+  <circle cx="50" cy="50" r="18" fill="#bc002d"/>
+  
+  <!-- 大阪女搞笑艺人 -->
+  <g fill="#2d2d3a">
+    <!-- 头部 -->
+    <ellipse cx="50" cy="36" rx="12" ry="14"/>
+    <!-- 长发 -->
+    <path d="M35 40 Q30 60 35 70 L65 70 Q70 60 65 40" fill="#1a1a2e"/>
+    <!-- 身体 -->
+    <path d="M32 52 L68 52 L70 88 L30 88 Z"/>
+    <!-- 麦克风 -->
+    <circle cx="70" cy="75" r="4" fill="#666"/>
+    <rect x="69" y="78" width="2" height="8" fill="#666"/>
+  </g>
+  
+  <text x="50" y="92" text-anchor="middle" font-size="10" fill="#bc002d">JP</text>
+</svg>

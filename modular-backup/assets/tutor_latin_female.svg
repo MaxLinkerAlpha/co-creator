@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="parchment" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f5f0e6"/>
+      <stop offset="100%" style="stop-color:#d4c4a8"/>
+    </linearGradient>
+    <linearGradient id="toga" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff"/>
+      <stop offset="100%" style="stop-color:#e8e0d0"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <circle cx="50" cy="50" r="48" fill="url(#parchment)" stroke="#8b4513" stroke-width="2"/>
+  
+  <!-- 古罗马女性剪影 -->
+  <g fill="#8b4513">
+    <!-- 头部 -->
+    <ellipse cx="50" cy="35" rx="14" ry="16"/>
+    <!-- 头发（盘发） -->
+    <ellipse cx="50" cy="28" rx="16" ry="8"/>
+    <!-- 身体（托加长袍女性版） -->
+    <path d="M30 50 Q50 45 70 50 L75 90 Q50 95 25 90 Z" fill="url(#toga)"/>
+    <!-- 长袍褶皱 -->
+    <path d="M35 50 Q40 70 38 90" fill="none" stroke="#d4af37" stroke-width="1"/>
+    <path d="M50 48 Q50 70 50 90" fill="none" stroke="#d4af37" stroke-width="1"/>
+    <path d="M65 50 Q60 70 62 90" fill="none" stroke="#d4af37" stroke-width="1"/>
+  </g>
+  
+  <!-- 橄榄枝 -->
+  <g fill="none" stroke="#228b22" stroke-width="2">
+    <ellipse cx="25" cy="30" rx="6" ry="10" transform="rotate(-30 25 30)"/>
+    <ellipse cx="75" cy="30" rx="6" ry="10" transform="rotate(30 75 30)"/>
+  </g>
+  
+  <!-- 法律书卷 -->
+  <rect x="60" y="75" width="12" height="15" fill="#8b4513" rx="1"/>
+  
+  <text x="50" y="95" text-anchor="middle" font-size="10" fill="#8b4513" font-family="Cinzel, serif" font-weight="bold">M</text>
+</svg>
