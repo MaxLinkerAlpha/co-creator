@@ -5,17 +5,18 @@
  * 
  * 使用说明：
  * 1. 重命名此文件为 config.js
- * 2. 在 config.js 中填入你的真实 API 密钥（不填也没关系，默认是免费版本模型，不过翻译质量嘛...）
+ * 2. 在 config.js 中填入你的真实 API 密钥
  * 3. 不要提交 config.js 到公共仓库（已在 .gitignore 中配置）
  * 
  * 配置说明：
  * - API_KEY: 你的大语言模型 API 密钥
  * - API_URL: 兼容 OpenAI 格式的 API 端点
- * - MODEL_NAME: 模型名称（如 gpt-4o-mini, gpt-4, claude-3 等）
+ * - MODEL_NAME: 模型名称
  * - TEMPERATURE: 温度参数（0.0-1.0）
  *   - 翻译任务建议 0.2（稳定准确）
  *   - 创意写作建议 0.7（更有创造力）
  *   - 助教吐槽建议 0.8（更有娱乐性）
+ */
 
 const CONFIG = {
     // [必填] API 密钥 - 替换为你的真实密钥
