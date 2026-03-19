@@ -596,10 +596,13 @@ export const UI = {
     const hasShown = localStorage.getItem('pd_welcome_shown');
     if (hasShown) return;
     
+    const savedKey = localStorage.getItem('pd_custom_api_key') || '';
+    const savedUrl = localStorage.getItem('pd_custom_api_url') || 'https://api.siliconflow.cn/v1/chat/completions';
+    
     const tip = document.createElement('div');
     tip.id = 'welcome-tip';
     tip.innerHTML = `
-      <div class="welcome-tip-content">
+      <div class="welcome-tip-content" style="max-width: 420px;">
         <div class="welcome-tip-header">
           <span>👋 欢迎使用 Co-creator</span>
           <button class="welcome-tip-close" onclick="this.parentElement.parentElement.parentElement.remove()">✕</button>
@@ -607,17 +610,48 @@ export const UI = {
         <div class="welcome-tip-body">
           <p>使用前需要配置 <strong>API Key</strong>。</p>
           <p>推荐 <a href="https://cloud.siliconflow.cn" target="_blank" style="color: var(--accent-color);">SiliconFlow</a>，注册即送免费额度。</p>
-          <p style="font-size: 12px; opacity: 0.7;">配置后即可使用 Qwen 等模型进行翻译。</p>
+          <div style="margin-top: 12px;">
+            <label style="font-size: 12px; opacity: 0.8; display: block; margin-bottom: 4px;">API Key</label>
+            <input type="text" id="welcome-api-key" value="${savedKey}" placeholder="sk-..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); font-size: 13px; box-sizing: border-box;">
+          </div>
+          <div style="margin-top: 10px;">
+            <label style="font-size: 12px; opacity: 0.8; display: block; margin-bottom: 4px;">API URL</label>
+            <input type="text" id="welcome-api-url" value="${savedUrl}" placeholder="https://api.siliconflow.cn/v1/chat/completions" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); font-size: 13px; box-sizing: border-box;">
+          </div>
         </div>
         <div class="welcome-tip-footer">
-          <button class="welcome-tip-btn secondary" onclick="localStorage.setItem('pd_welcome_shown', 'true'); this.parentElement.parentElement.parentElement.remove();">稍后配置</button>
-          <button class="welcome-tip-btn primary" onclick="UI.openCustomModelConfig(); this.parentElement.parentElement.parentElement.remove();">立即配置</button>
+          <button class="welcome-tip-btn secondary" onclick="this.parentElement.parentElement.parentElement.remove();">稍后配置</button>
+          <button class="welcome-tip-btn primary" onclick="UI.saveWelcomeConfig();">保存并开始</button>
         </div>
       </div>
     `;
     document.body.appendChild(tip);
   },
   
+  saveWelcomeConfig() {
+    const apiKey = document.getElementById('welcome-api-key')?.value?.trim();
+    const apiUrl = document.getElementById('welcome-api-url')?.value?.trim();
+    
+    if (apiKey) {
+      localStorage.setItem('pd_custom_api_key', apiKey);
+    }
+    if (apiUrl) {
+      localStorage.setItem('pd_custom_api_url', apiUrl);
+    }
+    
+    localStorage.setItem('pd_welcome_shown', 'true');
+    
+    const tip = document.getElementById('welcome-tip');
+    if (tip) {
+      tip.remove();
+    }
+    
+    const modelBtn = document.getElementById('model-btn');
+    if (modelBtn) {
+      modelBtn.textContent = 'Qwen2.5-7B';
+    }
+  },
+
   openCustomModelConfig() {
     localStorage.setItem('pd_welcome_shown', 'true');
     const modelGroup = document.querySelector('#model-menu')?.closest('.toolbar-group');
