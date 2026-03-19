@@ -47,7 +47,7 @@ export const UI = {
     const config = this.getConfig();
     const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key'];
     if (!config.API_KEY || invalidKeys.some(k => k && config.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
-      alert('[Warning] 请先在 config.js 中配置有效的 API_KEY！');
+      this.showWelcomeTip();
     }
 
     const tutorSelect = document.getElementById('tutor-select');
@@ -589,6 +589,43 @@ export const UI = {
   checkAutoPreview() {
     if (Store.getAutoPreview() && !this.isPreviewMode) {
       this.enterPreviewMode();
+    }
+  },
+
+  showWelcomeTip() {
+    const hasShown = localStorage.getItem('pd_welcome_shown');
+    if (hasShown) return;
+    
+    const tip = document.createElement('div');
+    tip.id = 'welcome-tip';
+    tip.innerHTML = `
+      <div class="welcome-tip-content">
+        <div class="welcome-tip-header">
+          <span>👋 欢迎使用 Co-creator</span>
+          <button class="welcome-tip-close" onclick="this.parentElement.parentElement.parentElement.remove()">✕</button>
+        </div>
+        <div class="welcome-tip-body">
+          <p>当前使用 <strong>免费模型</strong>，可直接开始写作！</p>
+          <p>添加自己的 API Key 可获得更快响应和更高质量。</p>
+        </div>
+        <div class="welcome-tip-footer">
+          <button class="welcome-tip-btn secondary" onclick="localStorage.setItem('pd_welcome_shown', 'true'); this.parentElement.parentElement.parentElement.remove();">知道了</button>
+          <button class="welcome-tip-btn primary" onclick="UI.openCustomModelConfig(); this.parentElement.parentElement.parentElement.remove();">配置 API</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(tip);
+  },
+  
+  openCustomModelConfig() {
+    localStorage.setItem('pd_welcome_shown', 'true');
+    const modelGroup = document.querySelector('#model-menu')?.closest('.toolbar-group');
+    if (modelGroup) {
+      modelGroup.classList.add('expanded');
+    }
+    const customOption = document.querySelector('[data-model="Custom"]');
+    if (customOption) {
+      customOption.click();
     }
   },
 
