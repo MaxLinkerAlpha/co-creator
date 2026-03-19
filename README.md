@@ -3,8 +3,9 @@
 > **实时多语言协作写作工作台** | 20位多元化AI助教 | 随机出没
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)]()
 [![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)]()
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-在线使用-blue.svg)](https://maxlinkeralpha.github.io/co-creator/)
 
 ---
 
@@ -14,7 +15,11 @@
 
 **直接访问在线版本，无需下载安装！**
 
-> 访问地址：`https://你的用户名.github.io/co-creator/`
+> 🚀 访问地址：**[https://maxlinkeralpha.github.io/co-creator/](https://maxlinkeralpha.github.io/co-creator/)**
+
+- 默认使用**免费模型**，打开即用
+- 添加自己的 API Key 可获得更快响应和更高质量
+- 数据保存在浏览器本地，刷新不丢失
 
 ### 💻 方式二：本地运行
 
@@ -244,6 +249,12 @@ MIT License
 ---
 
 ## 📋 版本历史
+
+### v1.1.0 (GitHub Pages 在线使用版)
+- 🌐 支持 GitHub Pages 直接在线使用
+- ✨ 欢迎弹窗引导用户（免费模型 / 配置 API）
+- ✨ 默认配置文件，无需本地配置
+- 📝 更新 README 添加在线访问地址
 
 ### v1.0.0 (首个正式稳定版)
 - ✨ 工具栏 UI 统一优化
