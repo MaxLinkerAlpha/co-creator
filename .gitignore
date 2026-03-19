@@ -20,6 +20,9 @@ Thumbs.db
 *.bak
 *.backup
 
+# 用户配置文件（包含API密钥）
+config.js
+
 # 重构相关临时文件
 REFACTORING_GUIDE.md
 REFACTORING_COMPLETE.md
