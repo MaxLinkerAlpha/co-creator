@@ -215,5 +215,60 @@ export const SyncEngine = {
         delete this.activeRequests[reqKey];
       }
     }
+  },
+
+  async executeInverse(text, cursorIndex, sourceLang, targetId, getTargetConfigs, uiCallbacks) {
+    const currentBlocks = text.split('\n\n');
+    const blockContent = currentBlocks[cursorIndex]?.trim();
+    
+    if (!blockContent) return;
+    
+    const reqKey = `inverse-${cursorIndex}`;
+    
+    const oldController = this.activeRequests[reqKey];
+    if (oldController) {
+      oldController.abort();
+    }
+    
+    const newController = new AbortController();
+    this.activeRequests[reqKey] = newController;
+    
+    if (oldController) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    try {
+      uiCallbacks.updateStatus('zh-status', '🔄 逆向翻译中...');
+      
+      const prompt = `Translate the following text from ${sourceLang} to Chinese. Output ONLY the translation.\n\n${blockContent}`;
+      const result = await API.call(blockContent, prompt, 0.2, newController.signal);
+      
+      const zhEditor = document.getElementById('editor-zh');
+      const zhBlocks = zhEditor.value.split('\n\n');
+      zhBlocks[cursorIndex] = result;
+      
+      while (zhBlocks.length < currentBlocks.length) {
+        zhBlocks.push('');
+      }
+      
+      zhEditor.value = zhBlocks.join('\n\n');
+      uiCallbacks.updateStatus('zh-status', '✓ 逆向翻译完成');
+      setTimeout(() => uiCallbacks.updateStatus('zh-status', ''), 2000);
+      
+      eventBus.emit(EVENTS.SYNC_INVERSE_COMPLETED, { cursorIndex, result });
+      
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('[SyncEngine] Inverse request aborted for block', cursorIndex);
+      } else {
+        console.error('[SyncEngine] Inverse translation error:', err);
+        uiCallbacks.updateStatus('zh-status', '❌ 逆向翻译失败');
+        eventBus.emit(EVENTS.SYNC_INVERSE_FAILED, { cursorIndex, error: err });
+      }
+    } finally {
+      if (this.activeRequests[reqKey] === newController) {
+        delete this.activeRequests[reqKey];
+      }
+    }
   }
 };

@@ -59,5 +59,9 @@ export const EVENTS = {
   // 翻译相关事件
   TRANSLATION_STARTED: 'translation:started',
   TRANSLATION_COMPLETED: 'translation:completed',
-  TRANSLATION_FAILED: 'translation:failed'
+  TRANSLATION_FAILED: 'translation:failed',
+  
+  // 逆向翻译相关事件
+  SYNC_INVERSE_COMPLETED: 'sync:inverse-completed',
+  SYNC_INVERSE_FAILED: 'sync:inverse-failed'
 };

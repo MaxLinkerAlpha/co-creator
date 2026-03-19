@@ -390,20 +390,66 @@ input[type="file"] { display: none; }
     align-items: center; letter-spacing: 1px;
 }
 
+/* 助教展示区 */
 .tutor-showcase {
-    padding: var(--space-4); display: flex; align-items: center; gap: var(--space-4);
+    padding: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
     background: linear-gradient(to right, var(--tutor-highlight-bg, rgba(0,0,0,0.05)), transparent);
     border-bottom: 1px solid var(--border-color);
 }
-.tutor-showcase-img {
-    width: var(--avatar-md); height: var(--avatar-md); border-radius: 50%; object-fit: cover;
-    border: 3px solid var(--tutor-primary, var(--border-color));
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.3s ease; flex-shrink: 0;
-}
-.tutor-showcase-img:hover { transform: scale(1.05); }
 
-.tutor-info h3 { margin: 0 0 var(--space-1) 0; font-size: 16px; color: var(--tutor-primary, var(--text-color)); }
-.tutor-info p { margin: 0; font-size: 13px; color: var(--text-color); opacity: 0.85; }
+.tutor-showcase-img {
+    width: var(--avatar-md);
+    height: var(--avatar-md);
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--tutor-primary, var(--border-color));
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+}
+
+.tutor-showcase-img:hover {
+    transform: scale(1.05);
+}
+
+.tutor-info h3 {
+    margin: 0 0 var(--space-1) 0;
+    font-size: 16px;
+    color: var(--tutor-primary, var(--text-color));
+}
+
+.tutor-info p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-color);
+    opacity: 0.85;
+}
+
+.tutor-selector, .tutor-config {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.tutor-selector label, .tutor-config label {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.tutor-selector select, .tutor-config select {
+    flex: 1;
+    padding: var(--space-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-size: 13px;
+}
+
 .tutor-content { flex: 1; padding: var(--space-4); overflow-y: auto; font-size: 14px; line-height: 1.6; color: var(--text-color); }
 
 .tutor-footer { 

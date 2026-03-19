@@ -9,30 +9,41 @@ export const ModelManager = {
   currentModel: null,
   customModelId: null,
 
+  getAvailableModels() {
+    return window.AVAILABLE_MODELS || AVAILABLE_MODELS || {};
+  },
+
+  getConfig() {
+    return window.CONFIG || CONFIG || {};
+  },
+
   init() {
     const saved = localStorage.getItem('pd_selected_model');
     const savedCustomModel = localStorage.getItem('pd_custom_model_id');
+    const models = this.getAvailableModels();
+    const config = this.getConfig();
     
     if (savedCustomModel) {
       this.customModelId = savedCustomModel;
     }
     
-    if (saved && AVAILABLE_MODELS && AVAILABLE_MODELS[saved]) {
-      this.currentModel = AVAILABLE_MODELS[saved];
-    } else if (CONFIG.MODEL_NAME) {
-      this.currentModel = { id: CONFIG.MODEL_NAME, name: CONFIG.MODEL_NAME };
+    if (saved && models && models[saved]) {
+      this.currentModel = models[saved];
+    } else if (config.MODEL_NAME) {
+      this.currentModel = { id: config.MODEL_NAME, name: config.MODEL_NAME };
     } else {
-      this.currentModel = AVAILABLE_MODELS['Qwen3.5-4B'];
+      this.currentModel = models['Qwen3.5-4B'];
       localStorage.setItem('pd_selected_model', 'Qwen3.5-4B');
     }
   },
 
   switch(modelKey) {
-    if (!AVAILABLE_MODELS || !AVAILABLE_MODELS[modelKey]) {
-      console.error('[ModelManager] 未知模型:', modelKey, 'AVAILABLE_MODELS:', Object.keys(AVAILABLE_MODELS || {}));
+    const models = this.getAvailableModels();
+    if (!models || !models[modelKey]) {
+      console.error('[ModelManager] 未知模型:', modelKey, 'AVAILABLE_MODELS:', Object.keys(models || {}));
       return false;
     }
-    this.currentModel = AVAILABLE_MODELS[modelKey];
+    this.currentModel = models[modelKey];
     localStorage.setItem('pd_selected_model', modelKey);
     console.log('[ModelManager] 切换模型:', modelKey, '->', this.currentModel);
     
@@ -51,7 +62,8 @@ export const ModelManager = {
       console.log('[ModelManager] 使用自定义模型:', this.customModelId);
       return this.customModelId;
     }
-    const modelId = this.currentModel ? this.currentModel.id : (CONFIG.MODEL_NAME || 'Qwen/Qwen3.5-4B');
+    const config = this.getConfig();
+    const modelId = this.currentModel ? this.currentModel.id : (config.MODEL_NAME || 'Qwen/Qwen3.5-4B');
     console.log('[ModelManager] 当前模型 ID:', modelId, 'currentModel:', this.currentModel);
     return modelId;
   },

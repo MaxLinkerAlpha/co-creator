@@ -2,13 +2,14 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Co-creator - 实时多语言写作工作台</title>
+    <title>Co-creator - 实时多语言写作工作台 (模块化版本)</title>
     <link rel="stylesheet" href="themes.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.1/marked.min.js"></script>
     <script src="config.js"></script>
     <script src="data.js"></script>
-    <script src="app.js" defer></script>
+    <script src="src/globals.js"></script>
+    <script type="module" src="src/app.js"></script>
 </head>
 <body>
 
@@ -48,7 +49,7 @@
     <button class="accent-btn" onclick="UI.addTargetColumn()">➕ 添加并发目标栏</button>
 </div>
 
-<!-- 工作区 -->
+<!-- 主工作区 -->
 <div class="workspace" id="workspace">
     <div class="column" id="source-col">
         <div class="col-header">
@@ -114,7 +115,7 @@
             </select>
         </div>
         <button class="accent-btn tutor-roast-btn" onclick="TutorSystem.roastManual()" id="btn-roast">
-            🗡️ 吐槽我的文本！
+            �️ 吐槽我的文本！
         </button>
     </div>
 </div>

@@ -9,12 +9,17 @@ import { Utils } from '../core/utils.js';
 import { ModelManager } from './model-manager.js';
 
 export const API = {
+  getConfig() {
+    return window.CONFIG || CONFIG || {};
+  },
+
   async call(text, systemPrompt, temp = 0.2, externalSignal = null, retries = 2) {
     const cleanText = Utils.cleanText(text);
     const cleanPrompt = Utils.cleanText(systemPrompt);
+    const config = this.getConfig();
 
     const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key'];
-    if (!CONFIG.API_KEY || invalidKeys.some(k => k && CONFIG.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
+    if (!config.API_KEY || invalidKeys.some(k => k && config.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
       throw new Error('API_KEY not configured or invalid');
     }
 
@@ -30,7 +35,7 @@ export const API = {
 
     console.log('[API] 准备请求:', { 
       model: payload.model, 
-      url: CONFIG.API_URL,
+      url: config.API_URL,
       textLength: cleanText.length 
     });
 
@@ -59,11 +64,11 @@ export const API = {
       }, timeoutMs);
       
       try {
-        const response = await fetch(CONFIG.API_URL, {
+        const response = await fetch(config.API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + CONFIG.API_KEY
+            'Authorization': 'Bearer ' + config.API_KEY
           },
           body: JSON.stringify(payload),
           signal: controller.signal
@@ -83,7 +88,7 @@ export const API = {
           const errorText = await response.text();
           console.error('[API] HTTP 错误:', response.status, errorText);
           console.error('[API] 请求详情:', {
-            url: CONFIG.API_URL,
+            url: config.API_URL,
             model: payload.model,
             status: response.status,
             statusText: response.statusText

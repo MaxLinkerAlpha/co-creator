@@ -39,5 +39,11 @@ export const Store = {
       cooldownMinutes: 3,
       idleThreshold: 5000
     });
+  },
+
+  saveCustomPreset(name, prompt) {
+    const presets = this.getCustomPresets();
+    presets[name] = prompt;
+    this.set('pd_custom_presets', presets);
   }
 };

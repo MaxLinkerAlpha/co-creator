@@ -21,6 +21,14 @@ export const UI = {
   isPreviewMode: false,
   tutorBubbleTimer: null,
 
+  getAvailableModels() {
+    return window.AVAILABLE_MODELS || AVAILABLE_MODELS || {};
+  },
+
+  getConfig() {
+    return window.CONFIG || CONFIG || {};
+  },
+
   init() {
     this.currentPresets = { ...DEFAULT_PRESETS, ...Store.getCustomPresets() };
     this.setTheme(Store.getTheme());
@@ -28,10 +36,11 @@ export const UI = {
     ModelManager.init();
     const modelSelect = document.getElementById('model-select');
     const customInput = document.getElementById('custom-model-input');
+    const models = this.getAvailableModels();
     
     if (modelSelect) {
       const savedModel = localStorage.getItem('pd_selected_model');
-      if (savedModel && AVAILABLE_MODELS && AVAILABLE_MODELS[savedModel]) {
+      if (savedModel && models && models[savedModel]) {
         modelSelect.value = savedModel;
         if (savedModel === 'Custom' && customInput) {
           customInput.style.display = 'inline-block';
@@ -41,14 +50,15 @@ export const UI = {
       } else {
         const currentModel = ModelManager.getCurrentModel();
         if (currentModel) {
-          const modelKey = Object.keys(AVAILABLE_MODELS).find(k => AVAILABLE_MODELS[k].id === currentModel.id);
+          const modelKey = Object.keys(models).find(k => models[k].id === currentModel.id);
           if (modelKey) modelSelect.value = modelKey;
         }
       }
     }
 
+    const config = this.getConfig();
     const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key'];
-    if (typeof CONFIG === 'undefined' || !CONFIG.API_KEY || invalidKeys.some(k => k && CONFIG.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
+    if (!config.API_KEY || invalidKeys.some(k => k && config.API_KEY.toLowerCase().includes(k.toLowerCase()))) {
       alert('[Warning] 请先在 config.js 中配置有效的 API_KEY！');
     }
 
@@ -58,15 +68,15 @@ export const UI = {
       tutorSelect.value = Store.getTutor(); 
     }
     
-    const savedTutor = Store.getTutor();
-    if (TUTORS[savedTutor]) TutorSystem.switch(savedTutor);
-    else TutorSystem.switch('marcus');
-    
     document.getElementById('tutor-mode').value = TutorSystem.config.mode;
 
     this.bindEvents();
     this.addTargetColumn('English', 'game');
     this.subscribeToEvents();
+    
+    const savedTutor = Store.getTutor();
+    if (TUTORS[savedTutor]) TutorSystem.switch(savedTutor);
+    else TutorSystem.switch('marcus');
   },
 
   bindEvents() {
@@ -131,6 +141,10 @@ export const UI = {
 
     eventBus.on(EVENTS.TUTOR_ERROR, ({ error, isBrief }) => {
       if (!isBrief) this.renderTutorError();
+    });
+
+    eventBus.on(EVENTS.TUTOR_SWITCHED, ({ tutorId }) => {
+      this.updateTutorPanel(tutorId);
     });
   },
 
@@ -278,36 +292,50 @@ export const UI = {
     }
   },
 
-  showTutorBubble(message, type = 'brief') {
+  showTutorBubble(content, mode = 'full') {
     const bubble = document.getElementById('tutor-bubble');
-    const bubbleText = document.getElementById('tutor-bubble-text');
+    const contentDiv = document.getElementById('tutor-bubble-content');
+    const tutor = TUTORS[TutorSystem.current];
+    document.getElementById('tutor-bubble-name').textContent = tutor.name;
     
-    if (!bubble || !bubbleText) return;
+    if (mode === 'brief') {
+      contentDiv.innerHTML = `<span style="font-style:italic;">${Utils.escapeHTML(content)}</span>`;
+      bubble.style.maxWidth = '280px';
+    } else {
+      const safeContent = Utils.escapeHTML(content);
+      contentDiv.innerHTML = marked.parse(safeContent);
+      bubble.style.maxWidth = '380px';
+    }
     
-    bubbleText.textContent = message;
+    bubble.style.display = 'block';
     bubble.classList.add('show');
     
     clearTimeout(this.tutorBubbleTimer);
     this.tutorBubbleTimer = setTimeout(() => {
       bubble.classList.remove('show');
+      setTimeout(() => bubble.style.display = 'none', 300);
     }, 5000);
   },
 
-  renderFullTutorRoast(message, tutorName, isIntro = false) {
-    const drawer = document.getElementById('tutor-drawer');
-    const roastContent = document.getElementById('tutor-roast-content');
-    
-    if (!drawer || !roastContent) return;
-    
-    roastContent.innerHTML = `<div class="roast-message">${Utils.escapeHTML(message)}</div>`;
-    drawer.classList.add('open');
+  closeTutorBubble() {
+    const bubble = document.getElementById('tutor-bubble');
+    bubble.classList.remove('show');
+    setTimeout(() => bubble.style.display = 'none', 300);
+  },
+
+  renderFullTutorRoast(htmlContent, tutorName, isPlain = false) {
+    const output = isPlain ? `<div style="color:var(--tutor-primary);font-weight:bold;">${Utils.escapeHTML(htmlContent)}</div>` 
+                           : marked.parse(Utils.escapeHTML(htmlContent));
+    document.getElementById('tutor-chat').innerHTML = `
+      <div style="margin-bottom:15px;padding-bottom:15px;border-bottom:1px dashed var(--border-color);">
+        <div style="font-size:12px;opacity:0.6;margin-bottom:10px;">${Utils.escapeHTML(tutorName)} 的点评：</div>
+        ${output}
+      </div>
+    `;
   },
 
   renderTutorError() {
-    const roastContent = document.getElementById('tutor-roast-content');
-    if (roastContent) {
-      roastContent.innerHTML = '<div class="roast-error">❌ 吐槽失败，请稍后重试</div>';
-    }
+    document.getElementById('tutor-chat').innerHTML = '<div style="color:red;">[Error] 助教暂时无法回应，请稍后再试。</div>';
   },
 
   wakeUpEditors() {
@@ -317,10 +345,83 @@ export const UI = {
   addTargetColumn(defaultLang = 'English', defaultStyle = 'game') {
     this.columnCounter++;
     const colId = `target-col-${this.columnCounter}`;
+    const colDiv = document.createElement('div');
+    colDiv.className = 'column';
+    colDiv.id = colId;
+
+    colDiv.innerHTML = `
+      <div class="col-header">
+        <div class="col-tools">
+          <select class="lang-sel">
+            ${Utils.buildLangOptions(defaultLang, SUPPORTED_LANGUAGES)}
+          </select>
+          <select class="style-sel">
+            ${Utils.buildStyleOptions(defaultStyle, this.currentPresets, DEFAULT_PRESETS)}
+          </select>
+        </div>
+        <div>
+          <span class="status-text col-status"></span>
+          <button style="border:none;background:transparent;color:red;cursor:pointer;font-size:16px;">[x]</button>
+        </div>
+      </div>
+      <div class="latin-panel" id="latin-panel-${colId}">
+        <strong>[SPQR] 拉丁语细分:</strong>
+        <select class="latin-style-sel">
+          ${LATIN_VARIANTS.map(v => `<option value="${v.value}">${v.label}</option>`).join('')}
+        </select>
+        <label style="cursor:pointer;"><input type="checkbox" class="latin-macron-cb" checked> 长音符号</label>
+      </div>
+      <textarea class="content-box target-textarea" placeholder="AI 目标输出区域..."></textarea>
+      <div class="content-box preview-box target-preview" style="display:none;"></div>
+    `;
+
+    document.getElementById('workspace').appendChild(colDiv);
+
+    const target = {
+      id: colId,
+      langSel: colDiv.querySelector('.lang-sel'),
+      styleSel: colDiv.querySelector('.style-sel'),
+      latinPanel: colDiv.querySelector(`#latin-panel-${colId}`),
+      latinStyleSel: colDiv.querySelector('.latin-style-sel'),
+      latinMacronCb: colDiv.querySelector('.latin-macron-cb'),
+      editor: colDiv.querySelector('.target-textarea'),
+      previewArea: colDiv.querySelector('.target-preview'),
+      statusEl: colDiv.querySelector('.col-status'),
+      memoryBlocks: []
+    };
+
+    // 添加事件监听器
+    target.langSel.addEventListener('change', () => this.handleLangChange(colId));
+    colDiv.querySelector('button').addEventListener('click', () => this.removeTargetColumn(colId));
+    target.editor.addEventListener('input', Utils.debounce(() => this.handleInverseSync(target), 1500));
     
-    // Implementation for adding target column
-    // This would be the full implementation from the original app.js
-    console.log('[UI] Adding target column:', colId, defaultLang, defaultStyle);
+    this.targetColumns.push(target);
+    this.handleLangChange(colId);
+  },
+
+  removeTargetColumn(colId) {
+    document.getElementById(colId)?.remove();
+    this.targetColumns = this.targetColumns.filter(c => c.id !== colId);
+  },
+
+  handleLangChange(colId) {
+    const target = this.targetColumns.find(c => c.id === colId);
+    if (target) {
+      target.latinPanel.style.display = target.langSel.value === 'Latin' ? 'flex' : 'none';
+    }
+  },
+
+  handleInverseSync(target) {
+    const text = target.editor.value;
+    const blocks = text.split('\n\n');
+    const cursorIndex = text.substring(0, target.editor.selectionStart).split('\n\n').length - 1;
+    
+    if (blocks[cursorIndex]?.trim()) {
+      SyncEngine.executeInverse(text, cursorIndex, target.langSel.value, target.id,
+        () => this.getTargetConfigs(),
+        this.getUICallbacks()
+      );
+    }
   },
 
   toggleGlobalPreview(forceOpen = false) {
@@ -331,7 +432,54 @@ export const UI = {
       previewBtn.textContent = this.isPreviewMode ? '📝 编辑模式' : '👁️ 全局排版预览';
     }
     
-    // Implementation for preview toggle
-    console.log('[UI] Toggle preview:', this.isPreviewMode);
+    // 切换预览模式
+    const editors = document.querySelectorAll('.target-textarea, .editor');
+    const previews = document.querySelectorAll('.target-preview');
+    
+    editors.forEach(editor => {
+      editor.style.display = this.isPreviewMode ? 'none' : 'block';
+    });
+    
+    previews.forEach(preview => {
+      preview.style.display = this.isPreviewMode ? 'block' : 'none';
+      if (this.isPreviewMode) {
+        const textarea = preview.previousElementSibling;
+        if (textarea) {
+          preview.innerHTML = marked.parse(textarea.value);
+        }
+      }
+    });
+  },
+
+  toggleTutorDrawer() {
+    document.getElementById('tutor-drawer').classList.toggle('open');
+  },
+
+  openTutorDrawer() {
+    document.getElementById('tutor-drawer').classList.add('open');
+  },
+
+  closeTutorDrawer() {
+    document.getElementById('tutor-drawer').classList.remove('open');
+  },
+
+  saveNewPreset() {
+    const name = Utils.escapeHTML(document.getElementById('new-preset-name').value.trim());
+    const prompt = document.getElementById('new-preset-prompt').value.trim();
+
+    if (!name || !prompt) return alert('名称和提示词不能为空！');
+    if (!prompt.includes('{{lang}}')) return alert('提示词中必须包含 {{lang}} 占位符！');
+
+    this.currentPresets[name] = prompt;
+    const customOnly = {};
+    for (const k in this.currentPresets) {
+      if (!DEFAULT_PRESETS[k]) customOnly[k] = this.currentPresets[k];
+    }
+    Store.set('pd_custom_presets', customOnly);
+
+    this.targetColumns.forEach(target => {
+      target.styleSel.innerHTML = Utils.buildStyleOptions(target.styleSel.value, this.currentPresets, DEFAULT_PRESETS);
+    });
+    document.getElementById('preset-modal').style.display = 'none';
   }
 };
