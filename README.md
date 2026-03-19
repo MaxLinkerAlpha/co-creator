@@ -17,8 +17,9 @@
 
 > 🚀 访问地址：**[https://maxlinkeralpha.github.io/co-creator/](https://maxlinkeralpha.github.io/co-creator/)**
 
-- 默认使用**免费模型**，打开即用
-- 添加自己的 API Key 可获得更快响应和更高质量
+- 首次使用需要配置 **API Key**
+- 推荐 [SiliconFlow](https://cloud.siliconflow.cn)，注册即送免费额度
+- 配置后即可使用 Qwen 等模型进行翻译
 - 数据保存在浏览器本地，刷新不丢失
 
 ### 💻 方式二：本地运行

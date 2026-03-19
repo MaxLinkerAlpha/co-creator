@@ -605,12 +605,13 @@ export const UI = {
           <button class="welcome-tip-close" onclick="this.parentElement.parentElement.parentElement.remove()">✕</button>
         </div>
         <div class="welcome-tip-body">
-          <p>当前使用 <strong>免费模型</strong>，可直接开始写作！</p>
-          <p>添加自己的 API Key 可获得更快响应和更高质量。</p>
+          <p>使用前需要配置 <strong>API Key</strong>。</p>
+          <p>推荐 <a href="https://cloud.siliconflow.cn" target="_blank" style="color: var(--accent-color);">SiliconFlow</a>，注册即送免费额度。</p>
+          <p style="font-size: 12px; opacity: 0.7;">配置后即可使用 Qwen 等模型进行翻译。</p>
         </div>
         <div class="welcome-tip-footer">
-          <button class="welcome-tip-btn secondary" onclick="localStorage.setItem('pd_welcome_shown', 'true'); this.parentElement.parentElement.parentElement.remove();">知道了</button>
-          <button class="welcome-tip-btn primary" onclick="UI.openCustomModelConfig(); this.parentElement.parentElement.parentElement.remove();">配置 API</button>
+          <button class="welcome-tip-btn secondary" onclick="localStorage.setItem('pd_welcome_shown', 'true'); this.parentElement.parentElement.parentElement.remove();">稍后配置</button>
+          <button class="welcome-tip-btn primary" onclick="UI.openCustomModelConfig(); this.parentElement.parentElement.parentElement.remove();">立即配置</button>
         </div>
       </div>
     `;
