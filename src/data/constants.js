@@ -47,10 +47,10 @@ export const PRESET_LABELS = {
 };
 
 export const TUTOR_MODE_SETTINGS = {
-  high: { charThreshold: 10, cooldownMinutes: 1, idleThreshold: 3000 },
-  normal: { charThreshold: 50, cooldownMinutes: 3, idleThreshold: 5000 },
-  low: { charThreshold: 200, cooldownMinutes: 5, idleThreshold: 8000 },
-  slow: { charThreshold: 5, cooldownMinutes: 2, idleThreshold: 5000, slowWriterThreshold: 60000 },
+  high: { charThreshold: 20, cooldownMinutes: 0.5, idleThreshold: 2000 },
+  normal: { charThreshold: 50, cooldownMinutes: 2, idleThreshold: 4000 },
+  low: { charThreshold: 100, cooldownMinutes: 5, idleThreshold: 6000 },
+  slow: { charThreshold: 5, cooldownMinutes: 1, idleThreshold: 5000, slowWriterThreshold: 30000 },
   manual: { charThreshold: Infinity, cooldownMinutes: 0, idleThreshold: Infinity }
 };
 
