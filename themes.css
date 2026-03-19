@@ -650,7 +650,10 @@ button:hover, select:hover { border-color: var(--accent-color); box-shadow: var(
 }
 
 .column { 
-    min-width: 400px; flex: 1; display: flex; flex-direction: column; 
+    min-width: 320px; 
+    max-width: 600px;
+    flex: 1 1 0;
+    display: flex; flex-direction: column; 
     background: var(--col-bg); 
     border: var(--col-border); 
     border-radius: var(--radius); 
@@ -676,12 +679,14 @@ button:hover, select:hover { border-color: var(--accent-color); box-shadow: var(
 }
 
 .col-header { 
-    display: flex; justify-content: space-between; align-items: center; 
+    display: flex; justify-content: space-between; align-items: flex-start; 
     margin-bottom: var(--space-3); font-weight: bold;
     font-family: var(--col-header-font);
     border-bottom: 1px solid var(--border-color);
     padding-bottom: var(--space-2);
     min-height: 32px;
+    flex-wrap: wrap;
+    gap: var(--space-2);
 }
 
 .col-tools { 
@@ -690,13 +695,12 @@ button:hover, select:hover { border-color: var(--accent-color); box-shadow: var(
     flex-wrap: wrap; 
     align-items: center;
     flex: 1;
-    min-width: 380px;
+    min-width: 0;
 }
 
 .col-title {
     font-size: 14px;
     font-weight: bold;
-    min-width: 360px;
 }
 
 .col-header .status-text {
@@ -739,11 +743,13 @@ button:hover, select:hover { border-color: var(--accent-color); box-shadow: var(
     background: var(--surface-color);
     border-radius: var(--radius);
     border: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .col-select {
-    min-width: 180px;
-    max-width: 180px;
+    min-width: 120px;
+    max-width: 200px;
+    flex: 1;
     padding: var(--space-2) var(--space-3);
     padding-right: calc(var(--space-3) + 12px);
     border: 1px solid var(--border-color);
@@ -784,6 +790,8 @@ button:hover, select:hover { border-color: var(--accent-color); box-shadow: var(
     justify-content: center;
     opacity: 0.6;
     transition: all 0.2s ease;
+    flex-shrink: 0;
+    margin-left: auto;
 }
 
 .col-close-btn:hover {
@@ -1120,7 +1128,9 @@ input[type="file"] { display: none; }
    ========================================= */
 
 @media (max-width: 768px) {
-    .column { min-width: 100%; }
+    .column { min-width: 100%; max-width: 100%; }
+    .col-tools { flex-direction: column; align-items: stretch; }
+    .col-select { max-width: none; }
     .tutor-drawer { width: 100%; right: -100%; }
     .tutor-showcase-img { width: var(--avatar-sm); height: var(--avatar-sm); }
     .tutor-bubble { left: var(--space-4); right: var(--space-4); max-width: none; }

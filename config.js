@@ -1,5 +1,5 @@
 const CONFIG = {
-    API_KEY: '',
+    API_KEY: 'sk-pmjeylhqjmwawrgfgmavttlrwjvopkwojbxwldgrwiuddikx',
     API_URL: 'https://api.siliconflow.cn/v1/chat/completions',
     MODEL_NAME: 'Qwen/Qwen2.5-7B-Instruct',
     TEMPERATURE: 0.2
