@@ -20,9 +20,6 @@ Thumbs.db
 *.bak
 *.backup
 
-# 敏感配置（如果不想提交个人 API 密钥）
-config.js
-
 # 重构相关临时文件
 REFACTORING_GUIDE.md
 REFACTORING_COMPLETE.md
