@@ -135,11 +135,12 @@ const ModelManager = {
 
   switch(modelKey) {
     if (!AVAILABLE_MODELS || !AVAILABLE_MODELS[modelKey]) {
-      console.error('未知模型:', modelKey);
+      console.error('[ModelManager] 未知模型:', modelKey, 'AVAILABLE_MODELS:', Object.keys(AVAILABLE_MODELS || {}));
       return false;
     }
     this.currentModel = AVAILABLE_MODELS[modelKey];
     localStorage.setItem('pd_selected_model', modelKey);
+    console.log('[ModelManager] 切换模型:', modelKey, '->', this.currentModel);
     
     return true;
   },
@@ -154,10 +155,13 @@ const ModelManager = {
 
   getCurrentModelId() {
     // 【新增】如果是自定义模型，返回自定义ID
-    if (this.currentModel && this.currentModel.id === 'custom' && this.customModelId) {
+    if (this.currentModel && this.currentModel.id.toLowerCase() === 'custom' && this.customModelId) {
+      console.log('[ModelManager] 使用自定义模型:', this.customModelId);
       return this.customModelId;
     }
-    return this.currentModel ? this.currentModel.id : (CONFIG.MODEL_NAME || 'Qwen/Qwen3.5-9B');
+    const modelId = this.currentModel ? this.currentModel.id : (CONFIG.MODEL_NAME || 'Qwen/Qwen3.5-4B');
+    console.log('[ModelManager] 当前模型 ID:', modelId, 'currentModel:', this.currentModel);
+    return modelId;
   },
 
   getCurrentModel() {
@@ -166,7 +170,7 @@ const ModelManager = {
   
   // 【新增】检查当前是否为自定义模型
   isCustomModel() {
-    return this.currentModel && this.currentModel.id === 'custom';
+    return this.currentModel && this.currentModel.id.toLowerCase() === 'custom';
   }
 };
 
@@ -191,11 +195,15 @@ const API = {
         { role: 'user', content: cleanText }
       ],
       temperature: temp,
-      max_tokens: 2048  // 【优化】限制最大输出长度，加快响应
+      max_tokens: 8192  // 【优化】增加最大输出长度，避免推理模式下 token 耗尽
     };
 
     // API 请求调试信息（生产环境禁用）
-    // console.log('[API] 准备请求:', { model: payload.model });
+    console.log('[API] 准备请求:', { 
+      model: payload.model, 
+      url: CONFIG.API_URL,
+      textLength: cleanText.length 
+    });
 
     // 指数退避重试机制
     for (let i = 0; i <= retries; i++) {
@@ -213,12 +221,19 @@ const API = {
         externalSignal.addEventListener('abort', onExternalAbort, { once: true });
       }
       
-      // 30秒超时
-      timeoutId = setTimeout(() => controller.abort(), 30000);
+      // 60秒超时（某些大模型可能需要更长时间）
+      const startTime = Date.now();
+      const timeoutMs = 60000;
+      timeoutId = setTimeout(() => {
+        console.error('[API] 超时触发:', {
+          model: payload.model,
+          elapsed: Date.now() - startTime + 'ms',
+          timeout: timeoutMs + 'ms'
+        });
+        controller.abort();
+      }, timeoutMs);
       
       try {
-        const startTime = Date.now();
-        
         const response = await fetch(CONFIG.API_URL, {
           method: 'POST',
           headers: {
@@ -230,6 +245,11 @@ const API = {
         });
 
         clearTimeout(timeoutId);
+        console.log('[API] 请求成功:', {
+          model: payload.model,
+          elapsed: Date.now() - startTime + 'ms',
+          status: response.status
+        });
         if (externalSignal) {
           externalSignal.removeEventListener('abort', onExternalAbort);
         }
@@ -239,18 +259,50 @@ const API = {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[API] HTTP 错误:', response.status, errorText);
+          console.error('[API] 请求详情:', {
+            url: CONFIG.API_URL,
+            model: payload.model,
+            status: response.status,
+            statusText: response.statusText
+          });
           throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
 
         
-        // 【修复】安全检查 API 响应结构
-        if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+        // 【修复】安全检查 API 响应结构，兼容多种格式
+        console.log('[API] 响应数据:', data);
+        
+        // 尝试多种可能的响应格式
+        let content = null;
+        
+        // 格式1: OpenAI 标准格式 {choices: [{message: {content: "..."}}]}
+        if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+          content = data.choices[0].message.content;
+        }
+        // 格式2: 某些 API 可能返回 {output: "..."} 或 {text: "..."}
+        else if (data.output) {
+          content = data.output;
+        }
+        else if (data.text) {
+          content = data.text;
+        }
+        // 格式3: 某些 API 可能返回 {result: "..."}
+        else if (data.result) {
+          content = data.result;
+        }
+        // 格式4: 某些 API 可能返回 {data: [{content: "..."}]}
+        else if (data.data && data.data[0] && data.data[0].content) {
+          content = data.data[0].content;
+        }
+        
+        if (!content) {
+          console.error('[API] 响应结构异常，实际返回:', JSON.stringify(data, null, 2));
           throw new Error('API 响应格式异常');
         }
         
-        return data.choices[0].message.content.trim();
+        return content.trim();
       } catch (err) {
         clearTimeout(timeoutId);
         if (externalSignal) {
@@ -265,11 +317,13 @@ const API = {
             throw err;
           }
           // 否则是超时导致的 abort
-          console.error('[API] 请求超时 (30秒)');
+          console.error('[API] 请求超时 (60秒)');
           if (i === retries) throw new Error('请求超时，请检查网络连接');
           // 超时时继续重试
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
         } else {
           // 其他错误
+          console.error('[API] 请求错误 (重试', i + 1, '/', retries + 1, '):', err);
           if (i === retries) {
             // 统一错误信息
             let errorMsg = '翻译失败';
@@ -282,11 +336,11 @@ const API = {
             } else if (err.message.includes('429')) {
               errorMsg = '请求过于频繁，请稍后再试';
             }
+            console.error('[API] 最终错误:', errorMsg, '原始错误:', err.message);
             throw new Error(errorMsg);
           }
-        }
-        
-        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); 
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+        } 
       }
     }
   }
@@ -469,18 +523,18 @@ const SyncEngine = {
     const translationTasks = targets.map(async (target) => {
       const reqKey = `${target.id}-${reqKeyPrefix}`;
       
-      // 【关键修复】先创建新的 controller，再中断旧的，避免竞态
-      const newController = new AbortController();
-      
-      // 安全地中断旧请求
+      // 【关键修复】先中断旧请求，再创建新的 controller，避免竞态
       const oldController = this.activeRequests[reqKey];
       if (oldController) {
         oldController.abort();
-        await new Promise(r => setTimeout(r, 50));
       }
       
-      // 现在才设置新的 controller
+      const newController = new AbortController();
       this.activeRequests[reqKey] = newController;
+      
+      if (oldController) {
+        await new Promise(r => setTimeout(r, 50));
+      }
 
       UI.updateStatus(target.statusId, `🔄 翻译段落 ${index + 1}...`);
 
@@ -533,6 +587,7 @@ const TutorSystem = {
   charsSinceLastRoast: 0,  // 【新增】累积字符计数
   slowWriterTimer: null,
   typingTimer: null,
+  activeRoastRequest: null,  // 【新增】追踪当前的吐槽请求
 
   switch(tutorId) {
     if (!TUTORS || !TUTORS[tutorId]) return;
@@ -628,20 +683,36 @@ const TutorSystem = {
 
   // DRY重构: 统一的底层执行逻辑
   async _executeRoast(textToAnalyze, contextPrompt, isBrief) {
+    // 【修复】中断之前的吐槽请求，避免并发
+    if (this.activeRoastRequest) {
+      this.activeRoastRequest.abort();
+    }
+    
+    const controller = new AbortController();
+    this.activeRoastRequest = controller;
+    
     this.lastRoastTime = Date.now();
     this.charsSinceLastRoast = 0; // 触发后重置累积计数
     const tutor = TUTORS[this.current];
     
     try {
-      const response = await API.call(textToAnalyze, contextPrompt, 0.8);
+      const response = await API.call(textToAnalyze, contextPrompt, 0.8, controller.signal);
       if (isBrief) {
         UI.showTutorBubble(response, 'brief');
       } else {
         UI.renderFullTutorRoast(response, tutor.name);
       }
     } catch (err) {
-      if (!isBrief) UI.renderTutorError();
-      console.error('Roast error:', err);
+      if (err.name === 'AbortError') {
+        console.log('[TutorSystem] 吐槽请求被中断');
+      } else {
+        if (!isBrief) UI.renderTutorError();
+        console.error('Roast error:', err);
+      }
+    } finally {
+      if (this.activeRoastRequest === controller) {
+        this.activeRoastRequest = null;
+      }
     }
   },
 
@@ -768,7 +839,7 @@ const UI = {
       // 只有段落未完成时才设置防抖定时器
       SyncEngine.typingTimer = setTimeout(() => SyncEngine.execute(text, cursorIndex, true), 1500);
       
-      this._lastInputTime = now;
+      this._lastInputTime = Date.now();
       TutorSystem.handleInput(text);
     });
 
