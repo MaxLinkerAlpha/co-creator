@@ -15,44 +15,106 @@
 
 <!-- 工具栏 -->
 <div class="toolbar">
-    <div class="theme-dots">
-        <div class="theme-dot apple" onclick="UI.setTheme('theme-apple')" title="Apple极简"></div>
-        <div class="theme-dot dark" onclick="UI.setTheme('theme-dark')" title="暗黑模式"></div>
-        <div class="theme-dot eye" onclick="UI.setTheme('theme-eyecare')" title="护眼模式"></div>
-        <div class="theme-dot roman" onclick="UI.setTheme('theme-roman')" title="罗马古典"></div>
+    <div class="toolbar-group" onmouseleave="UI.scheduleCloseMenu(this)" onmouseenter="UI.cancelCloseMenu(this)">
+        <span class="toolbar-group-label" id="theme-label" onclick="this.parentElement.classList.toggle('expanded')">⬜ Apple极简</span>
+        <div class="toolbar-group-content" id="theme-menu">
+            <div class="theme-option selected" data-theme="theme-apple" onclick="UI.selectTheme(this, 'theme-apple')">
+                <span class="theme-check">✓</span>
+                <span class="theme-color apple"></span>
+                <span class="theme-name">Apple极简</span>
+            </div>
+            <div class="theme-option" data-theme="theme-dark" onclick="UI.selectTheme(this, 'theme-dark')">
+                <span class="theme-check">✓</span>
+                <span class="theme-color dark"></span>
+                <span class="theme-name">暗黑模式</span>
+            </div>
+            <div class="theme-option" data-theme="theme-eyecare" onclick="UI.selectTheme(this, 'theme-eyecare')">
+                <span class="theme-check">✓</span>
+                <span class="theme-color eye"></span>
+                <span class="theme-name">护眼模式</span>
+            </div>
+            <div class="theme-option" data-theme="theme-roman" onclick="UI.selectTheme(this, 'theme-roman')">
+                <span class="theme-check">✓</span>
+                <span class="theme-color roman"></span>
+                <span class="theme-name">罗马古典</span>
+            </div>
+        </div>
     </div>
-    <!-- 模型选择器 -->
-    <div style="display:flex;align-items:center;gap:8px;margin-left:16px;flex-wrap:wrap;">
-        <span style="font-size:13px;opacity:0.7;">🤖</span>
-        <select id="model-select" onchange="UI.handleModelChange(this.value)" style="min-width:180px;font-size:13px;">
-            <option value="Qwen3.5-4B" selected>⚡ Qwen3.5-4B · 最快响应</option>
-            <option value="Qwen3.5-9B">⚖️ Qwen3.5-9B · 平衡之选</option>
-            <option value="Qwen3.5-35B-A3B">🎯 Qwen3.5-35B · 专业级</option>
-            <option value="Qwen2.5-7B">🆓 Qwen2.5-7B · 免费稳定</option>
-            <option value="Custom">✏️ 自定义模型...</option>
-        </select>
-        <input type="text" id="custom-model-input" placeholder="输入模型ID，如: gpt-4o" 
-               style="display:none;min-width:150px;font-size:13px;padding:4px 8px;border:1px solid var(--border-color);border-radius:var(--radius);"
-               onchange="UI.setCustomModel(this.value)">
+    
+    <div class="toolbar-group" onmouseleave="UI.scheduleCloseMenu(this)" onmouseenter="UI.cancelCloseMenu(this)">
+        <span class="toolbar-group-label" id="model-label" onclick="this.parentElement.classList.toggle('expanded')">🆓 Qwen2.5-7B</span>
+        <div class="toolbar-group-content" id="model-menu">
+            <div class="model-option selected" data-model="Qwen2.5-7B" onclick="UI.selectModel(this, 'Qwen2.5-7B')">
+                <span class="model-check">✓</span>
+                <span class="model-info">
+                    <span class="model-name">🆓 Qwen2.5-7B</span>
+                    <span class="model-desc">免费稳定</span>
+                </span>
+            </div>
+            <div class="model-option" data-model="Qwen3.5-4B" onclick="UI.selectModel(this, 'Qwen3.5-4B')">
+                <span class="model-check">✓</span>
+                <span class="model-info">
+                    <span class="model-name">⚡ Qwen3.5-4B</span>
+                    <span class="model-desc">最快响应</span>
+                </span>
+            </div>
+            <div class="model-option" data-model="Qwen3.5-9B" onclick="UI.selectModel(this, 'Qwen3.5-9B')">
+                <span class="model-check">✓</span>
+                <span class="model-info">
+                    <span class="model-name">⚖️ Qwen3.5-9B</span>
+                    <span class="model-desc">平衡之选</span>
+                </span>
+            </div>
+            <div class="model-option" data-model="Qwen3.5-35B-A3B" onclick="UI.selectModel(this, 'Qwen3.5-35B-A3B')">
+                <span class="model-check">✓</span>
+                <span class="model-info">
+                    <span class="model-name">🎯 Qwen3.5-35B</span>
+                    <span class="model-desc">专业级</span>
+                </span>
+            </div>
+            <div class="model-option" data-model="Custom" onclick="UI.selectModel(this, 'Custom')">
+                <span class="model-check">✓</span>
+                <span class="model-info">
+                    <span class="model-name">✏️ 自定模型</span>
+                    <span class="model-desc">配置您的模型</span>
+                </span>
+            </div>
+            <div id="custom-model-config" style="display:none;">
+                <input type="text" id="custom-model-id" placeholder="模型ID，如: gpt-4o" class="custom-input">
+                <input type="text" id="custom-model-url" placeholder="API URL (可选)" class="custom-input">
+                <input type="password" id="custom-model-key" placeholder="API Key (可选)" class="custom-input">
+                <button class="custom-save-btn" onclick="UI.saveCustomModelConfig()">💾 保存</button>
+            </div>
+        </div>
     </div>
 
-    <label style="display:flex;align-items:center;gap:5px;font-size:14px;cursor:pointer;">
-        <input type="checkbox" id="auto-preview-toggle"> 🎭 沉浸式自动预览
+    <button class="toolbar-preview-btn" id="preview-toggle-btn" onclick="UI.toggleAutoPreview()">
+        <span class="preview-btn-text">👁️ 实时预览</span>
+    </button>
+
+    <label class="toolbar-term-btn" id="term-btn">
+        <input type="file" id="csv-upload" accept=".csv" style="display:none;"> 
+        <span class="term-btn-text">📖 导入术语库</span>
     </label>
+    
     <div style="flex:1"></div>
-    <span class="status-text" id="term-status" style="margin-right:10px;">📚 未加载术语库</span>
-    <label class="accent-btn" style="cursor:pointer;padding:6px 12px;border-radius:var(--radius);">
-        <input type="file" id="csv-upload" accept=".csv"> 📖 导入术语库
-    </label>
-    <button class="accent-btn" onclick="document.getElementById('preset-modal').style.display='flex'">➕ 新增风格预设</button>
-    <button class="accent-btn" onclick="UI.addTargetColumn()">➕ 添加并发目标栏</button>
+    
+    <div class="toolbar-actions">
+        <button class="accent-btn" onclick="document.getElementById('preset-modal').style.display='flex'" title="新增风格预设">➕ 预设</button>
+        <button class="accent-btn" onclick="UI.addTargetColumn()" title="添加并发目标栏">➕ 目标栏</button>
+    </div>
 </div>
 
 <!-- 主工作区 -->
 <div class="workspace" id="workspace">
     <div class="column" id="source-col">
         <div class="col-header">
-            <span>📝 源文本 (Source) <span class="status-text" id="zh-status"></span></span>
+            <div class="col-tools">
+                <span class="drag-handle" style="visibility:hidden;">⋮⋮</span>
+                <span class="col-title">📝 源文本 (Source)</span>
+            </div>
+            <span class="col-close-btn-placeholder"></span>
+            <span class="status-text" id="zh-status"></span>
         </div>
         <textarea id="editor-zh" class="content-box" placeholder="📝 持续打字，离开光标的段落将自动在后台同步..."></textarea>
         <div id="preview-zh" class="content-box preview-box" style="display:none;"></div>

@@ -8,6 +8,8 @@
 export const ModelManager = {
   currentModel: null,
   customModelId: null,
+  customModelUrl: null,
+  customModelKey: null,
 
   getAvailableModels() {
     return window.AVAILABLE_MODELS || AVAILABLE_MODELS || {};
@@ -20,11 +22,19 @@ export const ModelManager = {
   init() {
     const saved = localStorage.getItem('pd_selected_model');
     const savedCustomModel = localStorage.getItem('pd_custom_model_id');
+    const savedCustomUrl = localStorage.getItem('pd_custom_model_url');
+    const savedCustomKey = localStorage.getItem('pd_custom_model_key');
     const models = this.getAvailableModels();
     const config = this.getConfig();
     
     if (savedCustomModel) {
       this.customModelId = savedCustomModel;
+    }
+    if (savedCustomUrl) {
+      this.customModelUrl = savedCustomUrl;
+    }
+    if (savedCustomKey) {
+      this.customModelKey = savedCustomKey;
     }
     
     if (saved && models && models[saved]) {
@@ -55,6 +65,28 @@ export const ModelManager = {
     this.customModelId = modelId.trim();
     localStorage.setItem('pd_custom_model_id', this.customModelId);
     return true;
+  },
+
+  setCustomModelUrl(url) {
+    if (!url || !url.trim()) return false;
+    this.customModelUrl = url.trim();
+    localStorage.setItem('pd_custom_model_url', this.customModelUrl);
+    return true;
+  },
+
+  setCustomModelKey(key) {
+    if (!key || !key.trim()) return false;
+    this.customModelKey = key.trim();
+    localStorage.setItem('pd_custom_model_key', this.customModelKey);
+    return true;
+  },
+
+  getCustomModelUrl() {
+    return this.customModelUrl || null;
+  },
+
+  getCustomModelKey() {
+    return this.customModelKey || null;
   },
 
   getCurrentModelId() {

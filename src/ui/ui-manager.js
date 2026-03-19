@@ -12,7 +12,7 @@ import { ModelManager } from '../services/model-manager.js';
 import { SyncEngine } from '../services/sync-engine.js';
 import { TutorSystem } from '../features/tutor-system.js';
 import { TUTORS } from '../data/tutors.js';
-import { DEFAULT_PRESETS, SUPPORTED_LANGUAGES, LATIN_VARIANTS } from '../data/constants.js';
+import { DEFAULT_PRESETS, SUPPORTED_LANGUAGES } from '../data/constants.js';
 
 export const UI = {
   targetColumns: [],
@@ -33,30 +33,16 @@ export const UI = {
 
   init() {
     this.currentPresets = { ...DEFAULT_PRESETS, ...Store.getCustomPresets() };
-    this.setTheme(Store.getTheme());
+    
+    const savedTheme = Store.getTheme();
+    this.updateThemeSelection(savedTheme);
+    this.setTheme(savedTheme);
 
     ModelManager.init();
-    const modelSelect = document.getElementById('model-select');
-    const customInput = document.getElementById('custom-model-input');
     const models = this.getAvailableModels();
     
-    if (modelSelect) {
-      const savedModel = localStorage.getItem('pd_selected_model');
-      if (savedModel && models && models[savedModel]) {
-        modelSelect.value = savedModel;
-        if (savedModel === 'Custom' && customInput) {
-          customInput.style.display = 'inline-block';
-          const savedCustom = localStorage.getItem('pd_custom_model_id');
-          if (savedCustom) customInput.value = savedCustom;
-        }
-      } else {
-        const currentModel = ModelManager.getCurrentModel();
-        if (currentModel) {
-          const modelKey = Object.keys(models).find(k => models[k].id === currentModel.id);
-          if (modelKey) modelSelect.value = modelKey;
-        }
-      }
-    }
+    const savedModel = localStorage.getItem('pd_selected_model') || 'Qwen2.5-7B';
+    this.updateModelSelection(savedModel);
 
     const config = this.getConfig();
     const invalidKeys = ['sk-your-real-api-key-here', 'sk-your-api-key-here', 'sk-test', 'your-api-key'];
@@ -73,9 +59,9 @@ export const UI = {
     
     document.getElementById('tutor-mode').value = TutorSystem.config.mode;
 
-    const autoPreviewToggle = document.getElementById('auto-preview-toggle');
-    if (autoPreviewToggle) {
-      autoPreviewToggle.checked = Store.getAutoPreview();
+    const previewToggleBtn = document.getElementById('preview-toggle-btn');
+    if (previewToggleBtn && Store.getAutoPreview()) {
+      previewToggleBtn.classList.add('active');
     }
 
     this.bindEvents();
@@ -83,10 +69,10 @@ export const UI = {
     const savedColumns = Store.getTargetColumns();
     if (savedColumns.length > 0) {
       savedColumns.forEach(col => {
-        this.addTargetColumn(col.lang, col.style, col.latinStyle, col.useMacron, col.content);
+        this.addTargetColumn(col.lang, col.style, col.content);
       });
     } else {
-      this.addTargetColumn('English', 'game');
+      this.addTargetColumn('English', 'concise');
     }
     
     const savedSourceText = Store.getSourceText();
@@ -102,11 +88,35 @@ export const UI = {
 
   bindEvents() {
     const elZh = document.getElementById('editor-zh');
-    const autoPreviewToggle = document.getElementById('auto-preview-toggle');
+    const csvUpload = document.getElementById('csv-upload');
     
-    if (autoPreviewToggle) {
-      autoPreviewToggle.addEventListener('change', () => {
-        Store.saveAutoPreview(autoPreviewToggle.checked);
+    if (csvUpload) {
+      csvUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const text = event.target.result;
+            const lines = text.split('\n').filter(line => line.trim());
+            Store.termsList = lines.map(line => {
+              const [src, tgt] = line.split(',').map(s => s.trim());
+              return { src, tgt };
+            }).filter(t => t.src && t.tgt);
+            
+            const termBtn = document.getElementById('term-btn');
+            if (termBtn) {
+              termBtn.classList.add('loaded');
+            }
+            
+            this.updateStatus('zh-status', `📖 已加载 ${Store.termsList.length} 条术语`);
+            setTimeout(() => this.updateStatus('zh-status', ''), 2000);
+          } catch (err) {
+            alert('术语库解析失败，请检查CSV格式');
+          }
+        };
+        reader.readAsText(file);
       });
     }
     
@@ -119,7 +129,7 @@ export const UI = {
       clearTimeout(SyncEngine.typingTimer);
       clearTimeout(this.autoPreviewTimer);
       
-      if (this.isPreviewMode && autoPreviewToggle?.checked) {
+      if (this.isPreviewMode && Store.getAutoPreview()) {
         this.exitPreviewMode();
       }
       
@@ -155,6 +165,14 @@ export const UI = {
       TutorSystem.handleInput(text);
     });
 
+    elZh.addEventListener('click', () => {
+      if (this.isPreviewMode) {
+        this.exitPreviewMode();
+      }
+    });
+
+    this.setupEditorKeyboardShortcuts(elZh);
+
     document.addEventListener('keydown', (e) => {
       if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) this.wakeUpEditors();
     });
@@ -165,13 +183,32 @@ export const UI = {
     });
   },
 
+  setupEditorKeyboardShortcuts(textarea) {
+    textarea.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key.toLowerCase()) {
+          case 'a':
+            e.stopPropagation();
+            return;
+          case 'z':
+            e.stopPropagation();
+            return;
+          case 'y':
+            e.preventDefault();
+            e.stopPropagation();
+            document.execCommand('redo');
+            return;
+        }
+      }
+    });
+  },
+
   scheduleAutoPreview() {
-    const autoPreviewToggle = document.getElementById('auto-preview-toggle');
-    if (!autoPreviewToggle?.checked) return;
+    if (!Store.getAutoPreview()) return;
     
     clearTimeout(this.autoPreviewTimer);
     this.autoPreviewTimer = setTimeout(() => {
-      if (autoPreviewToggle.checked && !this.isPreviewMode) {
+      if (Store.getAutoPreview() && !this.isPreviewMode) {
         this.enterPreviewMode();
       }
     }, 3000);
@@ -184,15 +221,32 @@ export const UI = {
     const previews = document.querySelectorAll('.target-preview, #preview-zh');
     
     editors.forEach(editor => {
-      editor.style.display = 'none';
+      editor.classList.add('fade-out');
+      setTimeout(() => {
+        editor.style.display = 'none';
+        editor.classList.remove('fade-out');
+      }, 300);
     });
     
     previews.forEach(preview => {
       preview.style.display = 'block';
+      preview.classList.add('fade-out');
+      preview.style.cursor = 'text';
       const textarea = preview.previousElementSibling;
       if (textarea && textarea.tagName === 'TEXTAREA') {
         preview.innerHTML = marked.parse(textarea.value);
       }
+      preview.onclick = () => {
+        this.exitPreviewMode();
+        const textarea = preview.previousElementSibling;
+        if (textarea && textarea.tagName === 'TEXTAREA') {
+          textarea.focus();
+        }
+      };
+      setTimeout(() => {
+        preview.classList.remove('fade-out');
+        preview.classList.add('fade-in');
+      }, 50);
     });
     
     const zhEditor = document.getElementById('editor-zh');
@@ -208,22 +262,37 @@ export const UI = {
     const editors = document.querySelectorAll('.target-textarea, #editor-zh');
     const previews = document.querySelectorAll('.target-preview, #preview-zh');
     
-    editors.forEach(editor => {
-      editor.style.display = 'block';
+    previews.forEach(preview => {
+      preview.classList.add('fade-out');
+      setTimeout(() => {
+        preview.style.display = 'none';
+        preview.classList.remove('fade-out', 'fade-in');
+        preview.onclick = null;
+      }, 300);
     });
     
-    previews.forEach(preview => {
-      preview.style.display = 'none';
+    editors.forEach(editor => {
+      editor.style.display = 'block';
+      editor.classList.add('fade-out');
+      setTimeout(() => {
+        editor.classList.remove('fade-out');
+        editor.classList.add('fade-in');
+        setTimeout(() => editor.classList.remove('fade-in'), 300);
+      }, 50);
     });
   },
 
   subscribeToEvents() {
     eventBus.on(EVENTS.TUTOR_ROAST, ({ message, tutorId, isBrief, isIntro }) => {
+      if (TutorSystem.isRandomMode) {
+        this.updateTutorPanel(tutorId);
+      }
+      
       if (isBrief) {
-        this.showTutorBubble(message, 'brief');
+        this.showTutorBubble(message, 'brief', tutorId);
       } else {
         const tutor = TUTORS[tutorId];
-        this.renderFullTutorRoast(message, tutor.name, isIntro);
+        this.renderFullTutorRoast(message, tutor.name, isIntro, tutorId);
       }
     });
 
@@ -236,6 +305,45 @@ export const UI = {
     });
   },
 
+  getThemeDisplayName(themeKey) {
+    const themeNames = {
+      'theme-apple': '⬜ Apple极简',
+      'theme-dark': '⬛ 暗黑模式',
+      'theme-eyecare': '🟩 护眼模式',
+      'theme-roman': '🟥 罗马古典'
+    };
+    return themeNames[themeKey] || themeKey;
+  },
+  
+  selectTheme(element, themeKey) {
+    const allOptions = document.querySelectorAll('.theme-option');
+    allOptions.forEach(opt => opt.classList.remove('selected'));
+    element.classList.add('selected');
+    
+    const themeLabel = document.getElementById('theme-label');
+    if (themeLabel) {
+      themeLabel.textContent = this.getThemeDisplayName(themeKey);
+    }
+    
+    this.setTheme(themeKey);
+  },
+  
+  updateThemeSelection(themeKey) {
+    const allOptions = document.querySelectorAll('.theme-option');
+    allOptions.forEach(opt => {
+      if (opt.dataset.theme === themeKey) {
+        opt.classList.add('selected');
+      } else {
+        opt.classList.remove('selected');
+      }
+    });
+    
+    const themeLabel = document.getElementById('theme-label');
+    if (themeLabel) {
+      themeLabel.textContent = this.getThemeDisplayName(themeKey);
+    }
+  },
+  
   setTheme(themeName) {
     const pureThemeName = themeName.replace('theme-', '');
     document.documentElement.setAttribute('data-theme', pureThemeName);
@@ -252,24 +360,104 @@ export const UI = {
     }
   },
   
+  getModelDisplayName(modelKey) {
+    const modelNames = {
+      'Qwen2.5-7B': '🆓 Qwen2.5-7B',
+      'Qwen3.5-4B': '⚡ Qwen3.5-4B',
+      'Qwen3.5-9B': '⚖️ Qwen3.5-9B',
+      'Qwen3.5-35B-A3B': '🎯 Qwen3.5-35B',
+      'Custom': '✏️ 自定模型'
+    };
+    return modelNames[modelKey] || modelKey;
+  },
+  
+  selectModel(element, modelKey) {
+    const allOptions = document.querySelectorAll('.model-option');
+    allOptions.forEach(opt => opt.classList.remove('selected'));
+    element.classList.add('selected');
+    
+    const modelLabel = document.getElementById('model-label');
+    if (modelLabel) {
+      modelLabel.textContent = this.getModelDisplayName(modelKey);
+    }
+    
+    this.handleModelChange(modelKey);
+  },
+  
+  updateModelSelection(modelKey) {
+    const allOptions = document.querySelectorAll('.model-option');
+    allOptions.forEach(opt => {
+      if (opt.dataset.model === modelKey) {
+        opt.classList.add('selected');
+      } else {
+        opt.classList.remove('selected');
+      }
+    });
+    
+    const modelLabel = document.getElementById('model-label');
+    if (modelLabel) {
+      if (modelKey === 'Custom') {
+        const customModelId = localStorage.getItem('pd_custom_model_id');
+        modelLabel.textContent = customModelId ? `✏️ ${customModelId}` : '✏️ 自定模型';
+      } else {
+        modelLabel.textContent = this.getModelDisplayName(modelKey);
+      }
+    }
+  },
+  
   handleModelChange(modelKey) {
-    const customInput = document.getElementById('custom-model-input');
+    const customConfig = document.getElementById('custom-model-config');
     
     if (modelKey === 'Custom') {
-      if (customInput) {
-        customInput.style.display = 'inline-block';
-        const savedCustom = localStorage.getItem('pd_custom_model_id');
-        if (savedCustom) {
-          customInput.value = savedCustom;
-        }
-        customInput.focus();
+      if (customConfig) {
+        customConfig.style.display = 'flex';
+        customConfig.style.flexDirection = 'column';
+        customConfig.style.gap = 'var(--space-2)';
+        
+        const savedId = localStorage.getItem('pd_custom_model_id') || '';
+        const savedUrl = localStorage.getItem('pd_custom_model_url') || '';
+        const savedKey = localStorage.getItem('pd_custom_model_key') || '';
+        
+        document.getElementById('custom-model-id').value = savedId;
+        document.getElementById('custom-model-url').value = savedUrl;
+        document.getElementById('custom-model-key').value = savedKey;
+        
+        document.getElementById('custom-model-id').focus();
       }
       this.switchModel('Custom');
     } else {
-      if (customInput) {
-        customInput.style.display = 'none';
+      if (customConfig) {
+        customConfig.style.display = 'none';
       }
       this.switchModel(modelKey);
+    }
+  },
+  
+  saveCustomModelConfig() {
+    const modelId = document.getElementById('custom-model-id').value.trim();
+    const modelUrl = document.getElementById('custom-model-url').value.trim();
+    const modelKey = document.getElementById('custom-model-key').value.trim();
+    
+    if (!modelId) {
+      alert('请输入模型ID');
+      return;
+    }
+    
+    localStorage.setItem('pd_custom_model_id', modelId);
+    if (modelUrl) localStorage.setItem('pd_custom_model_url', modelUrl);
+    if (modelKey) localStorage.setItem('pd_custom_model_key', modelKey);
+    
+    if (ModelManager.setCustomModelId(modelId)) {
+      if (modelUrl) ModelManager.setCustomModelUrl(modelUrl);
+      if (modelKey) ModelManager.setCustomModelKey(modelKey);
+      
+      const modelLabel = document.getElementById('model-label');
+      if (modelLabel) {
+        modelLabel.textContent = `✏️ ${modelId}`;
+      }
+      
+      this.updateStatus('zh-status', `🤖 已设置自定模型: ${modelId}`);
+      setTimeout(() => this.updateStatus('zh-status', ''), 2000);
     }
   },
   
@@ -286,7 +474,10 @@ export const UI = {
   },
 
   updateTutorPanel(tutorId) {
-    const tutor = TUTORS[tutorId];
+    const actualTutorId = tutorId === 'random' ? TutorSystem.current : tutorId;
+    const tutor = TUTORS[actualTutorId];
+    if (!tutor) return;
+    
     document.getElementById('tutor-title').textContent = tutor.title;
     document.getElementById('tutor-intro').textContent = tutor.intro;
     document.getElementById('tutor-info').innerHTML = `<h3>${tutor.name}</h3><p>${tutor.desc}</p>`;
@@ -316,11 +507,7 @@ export const UI = {
       id: t.id,
       lang: t.langSel.value,
       style: t.styleSel.value,
-      statusId: t.statusEl,
-      latinConfig: {
-        style: t.latinStyleSel.value,
-        useMacron: t.latinMacronCb.checked
-      }
+      statusId: t.statusEl
     }));
   },
 
@@ -333,7 +520,7 @@ export const UI = {
       trimTargetBlocks: (length) => this.trimTargetBlocks(length),
       deleteTargetBlocks: (indices) => this.deleteTargetBlocks(indices),
       checkAutoPreview: () => this.checkAutoPreview(),
-      getPreset: (style) => this.currentPresets[style] || DEFAULT_PRESETS.game
+      getPreset: (style) => this.currentPresets[style] || DEFAULT_PRESETS.concise
     };
   },
 
@@ -400,17 +587,39 @@ export const UI = {
   },
 
   checkAutoPreview() {
-    const autoPreviewToggle = document.getElementById('auto-preview-toggle');
-    if (autoPreviewToggle && autoPreviewToggle.checked && !this.isPreviewMode) {
+    if (Store.getAutoPreview() && !this.isPreviewMode) {
       this.enterPreviewMode();
     }
   },
 
-  showTutorBubble(content, mode = 'full') {
+  toggleAutoPreview() {
+    const isActive = !Store.getAutoPreview();
+    Store.saveAutoPreview(isActive);
+    
+    const btn = document.getElementById('preview-toggle-btn');
+    if (btn) {
+      if (isActive) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+        if (this.isPreviewMode) {
+          this.exitPreviewMode();
+        }
+      }
+    }
+  },
+
+  showTutorBubble(content, mode = 'full', tutorId = null) {
     const bubble = document.getElementById('tutor-bubble');
     const contentDiv = document.getElementById('tutor-bubble-content');
-    const tutor = TUTORS[TutorSystem.current];
+    const actualTutorId = tutorId || TutorSystem.current;
+    const tutor = TUTORS[actualTutorId];
+    
     document.getElementById('tutor-bubble-name').textContent = tutor.name;
+    const bubbleAvatar = document.getElementById('tutor-bubble-avatar');
+    if (bubbleAvatar) {
+      bubbleAvatar.src = tutor.avatar;
+    }
     
     if (mode === 'brief') {
       contentDiv.innerHTML = `<span style="font-style:italic;">${Utils.escapeHTML(content)}</span>`;
@@ -437,7 +646,7 @@ export const UI = {
     setTimeout(() => bubble.style.display = 'none', 300);
   },
 
-  renderFullTutorRoast(htmlContent, tutorName, isPlain = false) {
+  renderFullTutorRoast(htmlContent, tutorName, isPlain = false, tutorId = null) {
     const output = isPlain ? `<div style="color:var(--tutor-primary);font-weight:bold;">${Utils.escapeHTML(htmlContent)}</div>` 
                            : marked.parse(Utils.escapeHTML(htmlContent));
     document.getElementById('tutor-chat').innerHTML = `
@@ -446,6 +655,14 @@ export const UI = {
         ${output}
       </div>
     `;
+    
+    if (tutorId) {
+      const tutor = TUTORS[tutorId];
+      const showcaseImg = document.getElementById('tutor-showcase-img');
+      if (showcaseImg && tutor) {
+        showcaseImg.src = tutor.avatar;
+      }
+    }
   },
 
   renderTutorError() {
@@ -456,34 +673,28 @@ export const UI = {
     // Placeholder for editor wake-up logic
   },
 
-  addTargetColumn(defaultLang = 'English', defaultStyle = 'game', latinStyle = null, useMacron = true, savedContent = '') {
+  addTargetColumn(defaultLang = 'English', defaultStyle = 'concise', savedContent = '') {
     this.columnCounter++;
     const colId = `target-col-${this.columnCounter}`;
     const colDiv = document.createElement('div');
     colDiv.className = 'column';
     colDiv.id = colId;
+    colDiv.draggable = true;
+    colDiv.dataset.colId = colId;
 
     colDiv.innerHTML = `
       <div class="col-header">
         <div class="col-tools">
-          <select class="lang-sel">
+          <span class="drag-handle">⋮⋮</span>
+          <select class="col-select lang-sel">
             ${Utils.buildLangOptions(defaultLang, SUPPORTED_LANGUAGES)}
           </select>
-          <select class="style-sel">
+          <select class="col-select style-sel">
             ${Utils.buildStyleOptions(defaultStyle, this.currentPresets, DEFAULT_PRESETS)}
           </select>
         </div>
-        <div>
-          <span class="status-text col-status"></span>
-          <button style="border:none;background:transparent;color:red;cursor:pointer;font-size:16px;">[x]</button>
-        </div>
-      </div>
-      <div class="latin-panel" id="latin-panel-${colId}">
-        <strong>[SPQR] 拉丁语细分:</strong>
-        <select class="latin-style-sel">
-          ${LATIN_VARIANTS.map(v => `<option value="${v.value}">${v.label}</option>`).join('')}
-        </select>
-        <label style="cursor:pointer;"><input type="checkbox" class="latin-macron-cb" ${useMacron ? 'checked' : ''}> 长音符号</label>
+        <button class="col-close-btn" title="关闭目标栏">✕</button>
+        <span class="col-status-placeholder"></span>
       </div>
       <textarea class="content-box target-textarea" placeholder="AI 目标输出区域...">${savedContent}</textarea>
       <div class="content-box preview-box target-preview" style="display:none;"></div>
@@ -495,34 +706,99 @@ export const UI = {
       id: colId,
       langSel: colDiv.querySelector('.lang-sel'),
       styleSel: colDiv.querySelector('.style-sel'),
-      latinPanel: colDiv.querySelector(`#latin-panel-${colId}`),
-      latinStyleSel: colDiv.querySelector('.latin-style-sel'),
-      latinMacronCb: colDiv.querySelector('.latin-macron-cb'),
       editor: colDiv.querySelector('.target-textarea'),
       previewArea: colDiv.querySelector('.target-preview'),
       statusEl: colDiv.querySelector('.col-status'),
       memoryBlocks: []
     };
 
-    if (latinStyle && target.latinStyleSel) {
-      target.latinStyleSel.value = latinStyle;
-    }
-
-    target.langSel.addEventListener('change', () => {
-      this.handleLangChange(colId);
-      this.saveCurrentState();
-    });
+    target.langSel.addEventListener('change', () => this.saveCurrentState());
     target.styleSel.addEventListener('change', () => this.saveCurrentState());
-    target.latinStyleSel?.addEventListener('change', () => this.saveCurrentState());
-    target.latinMacronCb?.addEventListener('change', () => this.saveCurrentState());
-    colDiv.querySelector('button').addEventListener('click', () => this.removeTargetColumn(colId));
+    colDiv.querySelector('.col-close-btn').addEventListener('click', () => this.removeTargetColumn(colId));
     target.editor.addEventListener('input', Utils.debounce(() => {
       this.handleInverseSync(target);
       this.saveCurrentState();
     }, 1500));
     
+    target.editor.addEventListener('click', () => {
+      if (this.isPreviewMode) {
+        this.exitPreviewMode();
+      }
+    });
+    
+    this.setupEditorKeyboardShortcuts(target.editor);
+    this.setupColumnDragDrop(colDiv);
+    
     this.targetColumns.push(target);
-    this.handleLangChange(colId);
+    this.saveCurrentState();
+  },
+
+  setupColumnDragDrop(colDiv) {
+    colDiv.addEventListener('dragstart', (e) => {
+      colDiv.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', colDiv.id);
+    });
+    
+    colDiv.addEventListener('dragend', () => {
+      colDiv.classList.remove('dragging');
+      document.querySelectorAll('.column').forEach(col => {
+        col.classList.remove('drag-over');
+      });
+      this.syncColumnOrder();
+    });
+    
+    colDiv.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const dragging = document.querySelector('.dragging');
+      if (dragging && dragging !== colDiv) {
+        colDiv.classList.add('drag-over');
+      }
+    });
+    
+    colDiv.addEventListener('dragleave', () => {
+      colDiv.classList.remove('drag-over');
+    });
+    
+    colDiv.addEventListener('drop', (e) => {
+      e.preventDefault();
+      colDiv.classList.remove('drag-over');
+      
+      const draggingId = e.dataTransfer.getData('text/plain');
+      const draggingEl = document.getElementById(draggingId);
+      
+      if (draggingEl && draggingEl !== colDiv) {
+        const workspace = document.getElementById('workspace');
+        const allColumns = [...workspace.querySelectorAll('.column')];
+        const draggingIndex = allColumns.indexOf(draggingEl);
+        const targetIndex = allColumns.indexOf(colDiv);
+        
+        if (draggingIndex < targetIndex) {
+          colDiv.after(draggingEl);
+        } else {
+          colDiv.before(draggingEl);
+        }
+        
+        this.syncColumnOrder();
+      }
+    });
+  },
+
+  syncColumnOrder() {
+    const workspace = document.getElementById('workspace');
+    const columnEls = [...workspace.querySelectorAll('.column')];
+    const newOrder = [];
+    
+    columnEls.forEach(el => {
+      const colId = el.id;
+      const col = this.targetColumns.find(c => c.id === colId);
+      if (col) {
+        newOrder.push(col);
+      }
+    });
+    
+    this.targetColumns = newOrder;
     this.saveCurrentState();
   },
 
@@ -532,28 +808,14 @@ export const UI = {
     this.saveCurrentState();
   },
 
-  handleLangChange(colId) {
-    const target = this.targetColumns.find(c => c.id === colId);
-    if (target) {
-      target.latinPanel.style.display = target.langSel.value === 'Latin' ? 'flex' : 'none';
-    }
-  },
-
   saveCurrentState() {
     const columns = this.targetColumns.map(col => ({
       lang: col.langSel.value,
       style: col.styleSel.value,
-      latinStyle: col.latinStyleSel?.value || null,
-      useMacron: col.latinMacronCb?.checked ?? true,
       content: col.editor.value
     }));
     Store.saveTargetColumns(columns);
     Store.saveSourceText(document.getElementById('editor-zh')?.value || '');
-    
-    const autoPreviewToggle = document.getElementById('auto-preview-toggle');
-    if (autoPreviewToggle) {
-      Store.saveAutoPreview(autoPreviewToggle.checked);
-    }
   },
 
   handleInverseSync(target) {
@@ -626,5 +888,25 @@ export const UI = {
       target.styleSel.innerHTML = Utils.buildStyleOptions(target.styleSel.value, this.currentPresets, DEFAULT_PRESETS);
     });
     document.getElementById('preset-modal').style.display = 'none';
+  },
+
+  _menuCloseTimers: new Map(),
+
+  scheduleCloseMenu(element) {
+    if (this._menuCloseTimers.has(element)) {
+      clearTimeout(this._menuCloseTimers.get(element));
+    }
+    const timer = setTimeout(() => {
+      element.classList.remove('expanded');
+      this._menuCloseTimers.delete(element);
+    }, 500);
+    this._menuCloseTimers.set(element, timer);
+  },
+
+  cancelCloseMenu(element) {
+    if (this._menuCloseTimers.has(element)) {
+      clearTimeout(this._menuCloseTimers.get(element));
+      this._menuCloseTimers.delete(element);
+    }
   }
 };

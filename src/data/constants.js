@@ -22,14 +22,28 @@ export const SUPPORTED_LANGUAGES = [
   { code: "French", label: "🇫🇷 法语 (Français)" },
   { code: "German", label: "🇩🇪 德语 (Deutsch)" },
   { code: "Russian", label: "🇷🇺 俄语 (Русский)" },
-  { code: "Arabic", label: "🇸🇦 阿拉伯语 (العربية)" },
-  { code: "Latin", label: "🏛️ 拉丁语 (Latina)" }
+  { code: "Arabic", label: "🇸🇦 阿拉伯语 (العربية)" }
+];
+
+export const LATIN_VARIANTS = [
+  { code: "Latin:Classical", label: "🏛️ 古典拉丁语 (Classical)" },
+  { code: "Latin:Ecclesiastical", label: "⛪ 教会拉丁语 (Ecclesiastical)" },
+  { code: "Latin:Spoken", label: "💬 现代口语拉丁语 (Spoken)" },
+  { code: "Latin:Vulgar", label: "📜 通俗拉丁语 (Vulgar)" }
 ];
 
 export const DEFAULT_PRESETS = {
-  game: "You are a gaming localizer. Output ONLY the translated content into {{lang}}. Preserve paragraph formats and Markdown.",
   concise: "You are a minimalist editor. Translate into {{lang}}. Cut all fluff, make it punchy. Output ONLY translation. Preserve Markdown.",
-  casual: "Translate casually into {{lang}} as if chatting with a friend. Output ONLY translation. Preserve Markdown."
+  casual: "Translate casually into {{lang}} as if chatting with a friend. Output ONLY translation. Preserve Markdown.",
+  formal: "You are a professional translator. Translate into {{lang}} with formal, polished language suitable for business or academic contexts. Output ONLY translation. Preserve Markdown.",
+  literary: "You are a literary translator. Translate into {{lang}} with artistic flair, preserving the beauty and style of the original. Output ONLY translation. Preserve Markdown."
+};
+
+export const PRESET_LABELS = {
+  concise: "✂️ 精简",
+  casual: "💬 口语",
+  formal: "📋 正式",
+  literary: "🎭 文学"
 };
 
 export const TUTOR_MODE_SETTINGS = {
@@ -39,13 +53,6 @@ export const TUTOR_MODE_SETTINGS = {
   slow: { charThreshold: 5, cooldownMinutes: 2, idleThreshold: 5000, slowWriterThreshold: 60000 },
   manual: { charThreshold: Infinity, cooldownMinutes: 0, idleThreshold: Infinity }
 };
-
-export const LATIN_VARIANTS = [
-  { value: "Classical Latin", label: "古典拉丁语 (Classical)" },
-  { value: "Ecclesiastical Latin", label: "教会拉丁语 (Ecclesiastical)" },
-  { value: "Spoken Latin", label: "现代口语拉丁语 (Spoken)" },
-  { value: "Vulgar Latin", label: "通俗拉丁语 (Vulgar)" }
-];
 
 export const DEFAULT_THEME = 'theme-apple';
 export const DEFAULT_TUTOR = 'random';

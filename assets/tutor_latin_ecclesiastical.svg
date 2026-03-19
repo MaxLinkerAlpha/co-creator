@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="monk-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2c1810"/>
+      <stop offset="100%" style="stop-color:#1a0f0a"/>
+    </linearGradient>
+    <linearGradient id="habit" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3d2817"/>
+      <stop offset="100%" style="stop-color:#2a1a0f"/>
+    </linearGradient>
+  </defs>
+  
+  <circle cx="50" cy="50" r="48" fill="url(#monk-bg)" stroke="#8b7355" stroke-width="2"/>
+  
+  <g fill="#d4c4a8">
+    <ellipse cx="50" cy="38" rx="12" ry="14"/>
+    <path d="M28 52 Q50 48 72 52 L78 92 Q50 98 22 92 Z" fill="url(#habit)"/>
+  </g>
+  
+  <ellipse cx="50" cy="28" rx="22" ry="8" fill="#3d2817"/>
+  <ellipse cx="50" cy="32" rx="18" ry="5" fill="#2a1a0f"/>
+  
+  <circle cx="50" cy="35" r="3" fill="#d4c4a8"/>
+  
+  <g fill="none" stroke="#c9a227" stroke-width="1.5">
+    <line x1="35" y1="70" x2="65" y2="70"/>
+    <line x1="38" y1="75" x2="62" y2="75"/>
+    <line x1="41" y1="80" x2="59" y2="80"/>
+  </g>
+  
+  <path d="M75 55 L85 45 L85 65 L75 75 Z" fill="#d4c4a8" stroke="#8b7355" stroke-width="1"/>
+  <line x1="78" y1="50" x2="82" y2="50" stroke="#8b7355" stroke-width="1"/>
+  <line x1="78" y1="55" x2="82" y2="55" stroke="#8b7355" stroke-width="1"/>
+  <line x1="78" y1="60" x2="82" y2="60" stroke="#8b7355" stroke-width="1"/>
+  
+  <text x="50" y="95" text-anchor="middle" font-size="10" fill="#c9a227" font-family="Cinzel, serif" font-weight="bold">✝</text>
+</svg>
