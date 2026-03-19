@@ -21,6 +21,11 @@ export const API = {
     let apiUrl = config.API_URL;
     let apiKey = config.API_KEY;
 
+    const savedKey = localStorage.getItem('pd_custom_api_key');
+    const savedUrl = localStorage.getItem('pd_custom_api_url');
+    if (savedUrl) apiUrl = savedUrl;
+    if (savedKey) apiKey = savedKey;
+
     if (ModelManager.isCustomModel()) {
       const customUrl = ModelManager.getCustomModelUrl();
       const customKey = ModelManager.getCustomModelKey();
