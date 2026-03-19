@@ -72,8 +72,27 @@ export const UI = {
     
     document.getElementById('tutor-mode').value = TutorSystem.config.mode;
 
+    const autoPreviewToggle = document.getElementById('auto-preview-toggle');
+    if (autoPreviewToggle) {
+      autoPreviewToggle.checked = Store.getAutoPreview();
+    }
+
     this.bindEvents();
-    this.addTargetColumn('English', 'game');
+    
+    const savedColumns = Store.getTargetColumns();
+    if (savedColumns.length > 0) {
+      savedColumns.forEach(col => {
+        this.addTargetColumn(col.lang, col.style, col.latinStyle, col.useMacron, col.content);
+      });
+    } else {
+      this.addTargetColumn('English', 'game');
+    }
+    
+    const savedSourceText = Store.getSourceText();
+    if (savedSourceText) {
+      document.getElementById('editor-zh').value = savedSourceText;
+    }
+    
     this.subscribeToEvents();
     
     const savedTutor = Store.getTutor();
@@ -84,6 +103,12 @@ export const UI = {
   bindEvents() {
     const elZh = document.getElementById('editor-zh');
     const autoPreviewToggle = document.getElementById('auto-preview-toggle');
+    
+    if (autoPreviewToggle) {
+      autoPreviewToggle.addEventListener('change', () => {
+        Store.saveAutoPreview(autoPreviewToggle.checked);
+      });
+    }
     
     elZh.addEventListener('input', (e) => {
       const text = elZh.value;
@@ -111,6 +136,7 @@ export const UI = {
               this.getUICallbacks()
             );
             this.scheduleAutoPreview();
+            this.saveCurrentState();
             return;
           }
         }
@@ -122,6 +148,7 @@ export const UI = {
           this.getUICallbacks()
         );
         this.scheduleAutoPreview();
+        this.saveCurrentState();
       }, 1500);
       
       this._lastInputTime = Date.now();
@@ -403,7 +430,7 @@ export const UI = {
     // Placeholder for editor wake-up logic
   },
 
-  addTargetColumn(defaultLang = 'English', defaultStyle = 'game') {
+  addTargetColumn(defaultLang = 'English', defaultStyle = 'game', latinStyle = null, useMacron = true, savedContent = '') {
     this.columnCounter++;
     const colId = `target-col-${this.columnCounter}`;
     const colDiv = document.createElement('div');
@@ -430,9 +457,9 @@ export const UI = {
         <select class="latin-style-sel">
           ${LATIN_VARIANTS.map(v => `<option value="${v.value}">${v.label}</option>`).join('')}
         </select>
-        <label style="cursor:pointer;"><input type="checkbox" class="latin-macron-cb" checked> 长音符号</label>
+        <label style="cursor:pointer;"><input type="checkbox" class="latin-macron-cb" ${useMacron ? 'checked' : ''}> 长音符号</label>
       </div>
-      <textarea class="content-box target-textarea" placeholder="AI 目标输出区域..."></textarea>
+      <textarea class="content-box target-textarea" placeholder="AI 目标输出区域...">${savedContent}</textarea>
       <div class="content-box preview-box target-preview" style="display:none;"></div>
     `;
 
@@ -451,24 +478,55 @@ export const UI = {
       memoryBlocks: []
     };
 
-    // 添加事件监听器
-    target.langSel.addEventListener('change', () => this.handleLangChange(colId));
+    if (latinStyle && target.latinStyleSel) {
+      target.latinStyleSel.value = latinStyle;
+    }
+
+    target.langSel.addEventListener('change', () => {
+      this.handleLangChange(colId);
+      this.saveCurrentState();
+    });
+    target.styleSel.addEventListener('change', () => this.saveCurrentState());
+    target.latinStyleSel?.addEventListener('change', () => this.saveCurrentState());
+    target.latinMacronCb?.addEventListener('change', () => this.saveCurrentState());
     colDiv.querySelector('button').addEventListener('click', () => this.removeTargetColumn(colId));
-    target.editor.addEventListener('input', Utils.debounce(() => this.handleInverseSync(target), 1500));
+    target.editor.addEventListener('input', Utils.debounce(() => {
+      this.handleInverseSync(target);
+      this.saveCurrentState();
+    }, 1500));
     
     this.targetColumns.push(target);
     this.handleLangChange(colId);
+    this.saveCurrentState();
   },
 
   removeTargetColumn(colId) {
     document.getElementById(colId)?.remove();
     this.targetColumns = this.targetColumns.filter(c => c.id !== colId);
+    this.saveCurrentState();
   },
 
   handleLangChange(colId) {
     const target = this.targetColumns.find(c => c.id === colId);
     if (target) {
       target.latinPanel.style.display = target.langSel.value === 'Latin' ? 'flex' : 'none';
+    }
+  },
+
+  saveCurrentState() {
+    const columns = this.targetColumns.map(col => ({
+      lang: col.langSel.value,
+      style: col.styleSel.value,
+      latinStyle: col.latinStyleSel?.value || null,
+      useMacron: col.latinMacronCb?.checked ?? true,
+      content: col.editor.value
+    }));
+    Store.saveTargetColumns(columns);
+    Store.saveSourceText(document.getElementById('editor-zh')?.value || '');
+    
+    const autoPreviewToggle = document.getElementById('auto-preview-toggle');
+    if (autoPreviewToggle) {
+      Store.saveAutoPreview(autoPreviewToggle.checked);
     }
   },
 

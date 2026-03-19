@@ -45,5 +45,29 @@ export const Store = {
     const presets = this.getCustomPresets();
     presets[name] = prompt;
     this.set('pd_custom_presets', presets);
+  },
+
+  getTargetColumns() {
+    return this.getObject('pd_target_columns', []);
+  },
+
+  saveTargetColumns(columns) {
+    this.set('pd_target_columns', columns);
+  },
+
+  getAutoPreview() {
+    return this.get('pd_auto_preview', false);
+  },
+
+  saveAutoPreview(enabled) {
+    this.set('pd_auto_preview', enabled);
+  },
+
+  getSourceText() {
+    return this.get('pd_source_text', '');
+  },
+
+  saveSourceText(text) {
+    this.set('pd_source_text', text);
   }
 };
