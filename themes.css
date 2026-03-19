@@ -714,6 +714,33 @@ button:hover, select:hover { border-color: var(--accent-color); box-shadow: var(
     min-width: 28px;
 }
 
+.macron-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    user-select: none;
+}
+
+.macron-checkbox {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.macron-label {
+    opacity: 0.8;
+}
+
+.latin-config {
+    padding: 2px 6px;
+    background: var(--surface-color);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
 .col-select {
     min-width: 180px;
     max-width: 180px;

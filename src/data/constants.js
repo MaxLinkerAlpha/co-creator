@@ -26,10 +26,10 @@ export const SUPPORTED_LANGUAGES = [
 ];
 
 export const LATIN_VARIANTS = [
-  { code: "Latin:Classical", label: "🏛️ 古典拉丁语 (Classical)" },
-  { code: "Latin:Ecclesiastical", label: "⛪ 教会拉丁语 (Ecclesiastical)" },
-  { code: "Latin:Spoken", label: "💬 现代口语拉丁语 (Spoken)" },
-  { code: "Latin:Vulgar", label: "📜 通俗拉丁语 (Vulgar)" }
+  { code: "Latin:Classical", label: "🏛️ 古典拉丁语 (Classical)", defaultMacron: true },
+  { code: "Latin:Ecclesiastical", label: "⛪ 教会拉丁语 (Ecclesiastical)", defaultMacron: false },
+  { code: "Latin:Spoken", label: "💬 现代口语拉丁语 (Spoken)", defaultMacron: false },
+  { code: "Latin:Vulgar", label: "📜 通俗拉丁语 (Vulgar)", defaultMacron: false }
 ];
 
 export const DEFAULT_PRESETS = {
