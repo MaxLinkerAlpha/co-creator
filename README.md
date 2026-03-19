@@ -3,7 +3,7 @@
 > **实时多语言协作写作工作台** | 23位多元化AI助教 | 随机出没
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)]()
+[![Version](https://img.shields.io/badge/version-1.2.0-green.svg)]()
 [![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)]()
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-在线使用-blue.svg)](https://maxlinkeralpha.github.io/co-creator/)
 
@@ -251,6 +251,13 @@ MIT License
 ---
 
 ## 📋 版本历史
+
+### v1.2.0 (暂时找不出错版)
+- 🐛 修复源语言偶尔被自动清空的问题
+- 🐛 修复多目标栏 UI 排版混乱问题
+- 🐛 修复逆向翻译段落索引越界问题
+- 🔧 调整助教吐槽频率设置，使其符合字面预期
+- ✨ 拉丁语长音符号配置功能（古典拉丁语默认开启）
 
 ### v1.1.0 (GitHub Pages 在线使用版)
 - 🌐 支持 GitHub Pages 直接在线使用
