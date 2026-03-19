@@ -3,12 +3,20 @@
 > **实时多语言协作写作工作台** | 20位多元化AI助教 | 随机出没
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.2.0-green.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)]()
 [![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)]()
 
 ---
 
 ## 🎯 极简使用指南（小白专用）
+
+### 🌐 方式一：在线使用（推荐）
+
+**直接访问在线版本，无需下载安装！**
+
+> 访问地址：`https://你的用户名.github.io/co-creator/`
+
+### 💻 方式二：本地运行
 
 ### 第一步：下载项目
 
@@ -237,7 +245,20 @@ MIT License
 
 ## 📋 版本历史
 
-### v3.3.0 (当前版本)
+### v1.0.0 (首个正式稳定版)
+- ✨ 工具栏 UI 统一优化
+- ✨ 模型/主题选择下拉菜单（显示当前选中）
+- ✨ 实时预览一键切换按钮
+- ✨ 术语库导入按钮（成功后显示 ✓）
+- ✨ 四个工具栏按钮宽度统一
+- ✨ 模块化架构重构
+- ✨ 助教系统随机模式
+- ✨ 沉浸式自动预览
+- ✨ 用户状态记忆
+- ✨ 拖拽排序目标栏
+- ✨ 拉丁语变体支持
+
+### v3.3.0
 - ✨ 默认使用免费模型，无需配置即可使用
 - ✨ 风格预设汉化（精简/口语/正式/文学）
 - ✨ 工具栏分组折叠，界面更简洁
